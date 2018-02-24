@@ -138,12 +138,18 @@ public class BrokerStartup {
 
             MixAll.properties2Object(ServerUtil.commandLine2Properties(commandLine), brokerConfig);
 
+            //设置ROCKETMQ_HOME属性
+            String dir = System.getProperty("user.dir");
+            dir = dir.substring(0, dir.indexOf("rocketmq") + 8);
+            brokerConfig.setRocketmqHome(dir);
+
             if (null == brokerConfig.getRocketmqHome()) {
                 System.out.printf("Please set the " + MixAll.ROCKETMQ_HOME_ENV
                     + " variable in your environment to match the location of the RocketMQ installation");
                 System.exit(-2);
             }
 
+            brokerConfig.setNamesrvAddr("localhost:9876");
             String namesrvAddr = brokerConfig.getNamesrvAddr();
             if (null != namesrvAddr) {
                 try {
