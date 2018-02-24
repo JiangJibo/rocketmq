@@ -25,7 +25,9 @@ package org.apache.rocketmq.client.latency;
 public interface LatencyFaultTolerance<T> {
 
     /**
-     * 更新对应的延迟和不可用时长
+     * 更新对应的延迟和不可用时长,
+     * 延迟和不可用时长匹配,当延迟为550时,不可用时长为30000
+     * 也就是说多长时间后才能重新启用指定Broker
      *
      * @param name 对象
      * @param currentLatency 延迟

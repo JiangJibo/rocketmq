@@ -484,7 +484,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
      *
      * @param brokerName     brokerName
      * @param currentLatency 延迟
-     * @param isolation      是否隔离
+     * @param isolation      是否隔离,当出现异常时隔离Broker
      */
     public void updateFaultItem(final String brokerName, final long currentLatency, boolean isolation) {
         this.mqFaultStrategy.updateFaultItem(brokerName, currentLatency, isolation);
