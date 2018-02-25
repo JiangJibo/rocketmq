@@ -469,7 +469,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
     }
 
     /**
-     * 根据 消息发布信息 和 brokerName 获取消息队列
+     * 根据 TopicPublishInfo 和 brokerName 获取消息队列
      *
      * @param tpInfo         消息发布信息
      * @param lastBrokerName brokerName
@@ -695,7 +695,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                                       final SendCallback sendCallback, //
                                       final TopicPublishInfo topicPublishInfo, //
                                       final long timeout) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
-        // 获取 broker地址
+        // 获取 broker的Master IP地址
         String brokerAddr = this.mQClientFactory.findBrokerAddressInPublish(mq.getBrokerName());
         if (null == brokerAddr) {
             tryToFindTopicPublishInfo(mq.getTopic());

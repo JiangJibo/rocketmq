@@ -29,11 +29,11 @@ public class QueueData implements Comparable<QueueData> {
      */
     private String brokerName;
     /**
-     * 读队列长度
+     * 读队列个数
      */
     private int readQueueNums;
     /**
-     * 写队列长度
+     * 写队列个数
      */
     private int writeQueueNums;
     /**

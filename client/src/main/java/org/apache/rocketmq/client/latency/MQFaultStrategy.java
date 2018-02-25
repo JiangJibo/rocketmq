@@ -26,6 +26,7 @@ import org.slf4j.Logger;
  * MQ故障策略
  */
 public class MQFaultStrategy {
+
     private final static Logger log = ClientLogger.getLog();
 
     /**
@@ -49,23 +50,27 @@ public class MQFaultStrategy {
     /**
      * 根据 Topic发布信息 选择一个消息队列
      *
-     * @param tpInfo Topic发布信息
+     * @param tpInfo         Topic发布信息
      * @param lastBrokerName brokerName
      * @return 消息队列
      */
     public MessageQueue selectOneMessageQueue(final TopicPublishInfo tpInfo, final String lastBrokerName) {
         if (this.sendLatencyFaultEnable) {
             try {
-                // 获取 brokerName=lastBrokerName && 可用的一个消息队列
+                //循环所有MessageQueue
+                // 当 lastBrokerName == null 时，获取第一个可用的MessageQueue
+                // 当 lastBrokerName != null 时, 获取 brokerName=lastBrokerName && 可用的MessageQueue
                 int index = tpInfo.getSendWhichQueue().getAndIncrement();
                 for (int i = 0; i < tpInfo.getMessageQueueList().size(); i++) {
                     int pos = Math.abs(index++) % tpInfo.getMessageQueueList().size();
-                    if (pos < 0)
+                    if (pos < 0) {
                         pos = 0;
+                    }
                     MessageQueue mq = tpInfo.getMessageQueueList().get(pos);
                     if (latencyFaultTolerance.isAvailable(mq.getBrokerName())) {
-                        if (null == lastBrokerName || mq.getBrokerName().equals(lastBrokerName))
+                        if (null == lastBrokerName || mq.getBrokerName().equals(lastBrokerName)) {
                             return mq;
+                        }
                     }
                 }
                 // 选择一个相对好的broker，并获得其对应的一个消息队列，不考虑该队列的可用性
@@ -94,9 +99,9 @@ public class MQFaultStrategy {
     /**
      * 更新延迟容错信息
      *
-     * @param brokerName brokerName
-     * @param currentLatency 延迟
-     * @param isolation 是否隔离。当开启隔离时，默认延迟为30000。目前主要用于发送消息异常时
+     * @param brokerName     brokerName
+     * @param currentLatency 延迟  当延迟大于550L时，就会有不可用时长了，时长至少为30000L,也就是30秒
+     * @param isolation      是否隔离。当开启隔离时，默认延迟为30000,不可用时间为600秒。目前主要用于发送消息异常时
      */
     public void updateFaultItem(final String brokerName, final long currentLatency, boolean isolation) {
         if (this.sendLatencyFaultEnable) {
@@ -113,8 +118,9 @@ public class MQFaultStrategy {
      */
     private long computeNotAvailableDuration(final long currentLatency) {
         for (int i = latencyMax.length - 1; i >= 0; i--) {
-            if (currentLatency >= latencyMax[i])
+            if (currentLatency >= latencyMax[i]) {
                 return this.notAvailableDuration[i];
+            }
         }
         return 0;
     }
