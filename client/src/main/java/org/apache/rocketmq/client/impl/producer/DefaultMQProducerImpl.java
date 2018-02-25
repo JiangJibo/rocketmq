@@ -53,6 +53,9 @@ import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.*;
 
+/**
+ * 默认的消息生产者
+ */
 public class DefaultMQProducerImpl implements MQProducerInner {
 
     private final Logger log = ClientLogger.getLog();
