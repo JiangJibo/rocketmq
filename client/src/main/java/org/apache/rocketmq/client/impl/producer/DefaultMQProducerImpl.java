@@ -675,7 +675,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
     }
 
     /**
-     * 发送消息核心方法，并返回发送结果
+     * 发送消息核心方法，  并返回发送结果
      *
      * @param msg               消息
      * @param mq                消息队列
