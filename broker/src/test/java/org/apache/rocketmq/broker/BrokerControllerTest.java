@@ -18,6 +18,7 @@
 package org.apache.rocketmq.broker;
 
 import org.apache.rocketmq.common.BrokerConfig;
+import org.apache.rocketmq.common.TopicConfig;
 import org.apache.rocketmq.remoting.netty.NettyClientConfig;
 import org.apache.rocketmq.remoting.netty.NettyServerConfig;
 import org.apache.rocketmq.store.config.MessageStoreConfig;
@@ -26,6 +27,7 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class BrokerControllerTest {
+
     /**
      * Tests if the controller can be properly stopped and started.
      *
@@ -44,4 +46,5 @@ public class BrokerControllerTest {
             brokerController.shutdown();
         }
     }
+
 }
