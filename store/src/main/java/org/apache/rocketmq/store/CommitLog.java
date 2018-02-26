@@ -635,7 +635,7 @@ public class CommitLog {
         MappedFile unlockMappedFile = null;
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
 
-        // 获取写入锁
+        // 获取写入锁,限制同一时间只能有一个线程进行磁盘的写入工作
         lockForPutMessage(); //spin...
         try {
             long beginLockTimestamp = this.defaultMessageStore.getSystemClock().now();
