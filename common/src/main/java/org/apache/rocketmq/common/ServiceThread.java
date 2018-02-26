@@ -112,7 +112,7 @@ public abstract class ServiceThread implements Runnable {
     }
 
     /**
-     * 唤醒
+     * 唤醒,立即终止{@link #waitPoint}的await(),同时更新hasNotified==true,表示刚有消息commit,然后立即执行{@link #waitForRunning(long)}就无需休眠了
      */
     @SuppressWarnings("SpellCheckingInspection")
     public void wakeup() {
@@ -128,7 +128,7 @@ public abstract class ServiceThread implements Runnable {
      * @param interval 等待时长
      */
     protected void waitForRunning(long interval) {
-        //当hasNotified==true时，表示刷盘资源未被其他线程占用,设置为false,同时不再休眠直接返回
+        //当hasNotified==true时，标识当前flush是由commit消息触发的，能够跳过休眠
         if (hasNotified.compareAndSet(true, false)) {
             this.onWaitEnd();
             return;
@@ -142,7 +142,7 @@ public abstract class ServiceThread implements Runnable {
         } catch (InterruptedException e) {
             e.printStackTrace();
         } finally {
-            //提前占位刷盘资源,当其他线程想要使用此资源时先休眠interval时长
+            //在退出此方法前设置hasNotified==false，也就是下次非commit触发wakeup()后的flush还需要休眠
             hasNotified.set(false);
             this.onWaitEnd();
         }

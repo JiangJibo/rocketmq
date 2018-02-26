@@ -979,15 +979,15 @@ public class CommitLog {
                 int commitDataLeastPages = CommitLog.this.defaultMessageStore.getMessageStoreConfig().getCommitCommitLogLeastPages();
                 int commitDataThoroughInterval = CommitLog.this.defaultMessageStore.getMessageStoreConfig().getCommitCommitLogThoroughInterval();
 
-                // 当时间满足commitDataThoroughInterval时，即使写入的数量不足commitDataLeastPages，也进行flush
                 long begin = System.currentTimeMillis();
+                //当最近200毫秒内没有消息Commit时,此次Commit触发刷盘
                 if (begin >= (this.lastCommitTimestamp + commitDataThoroughInterval)) {
                     this.lastCommitTimestamp = begin;
                     commitDataLeastPages = 0;
                 }
 
                 try {
-                    // commit
+                    //Commit需要缓冲区内至少含有4页数据，也就是16KB,或者是最近200毫秒内没有消息Commit
                     boolean result = CommitLog.this.mappedFileQueue.commit(commitDataLeastPages);
                     long end = System.currentTimeMillis();
                     if (!result) { // TODO 疑问：未写入成功，为啥要唤醒flushCommitLogService
@@ -1042,9 +1042,9 @@ public class CommitLog {
                 int flushPhysicQueueThoroughInterval = CommitLog.this.defaultMessageStore.getMessageStoreConfig().getFlushCommitLogThoroughInterval();
 
                 // Print flush progress
-                // 当时间满足flushPhysicQueueThoroughInterval(10秒)时，即使写入的数量不足flushPhysicQueueLeastPages，也进行flush
                 boolean printFlushProgress = false;
                 long currentTimeMillis = System.currentTimeMillis();
+                // 当时间满足距离上次flush时间超过10秒时，即使写入的数量不足flushPhysicQueueLeastPages(4页，16KB)，也进行flush
                 if (currentTimeMillis >= (this.lastFlushTimestamp + flushPhysicQueueThoroughInterval)) {
                     this.lastFlushTimestamp = currentTimeMillis;
                     flushPhysicQueueLeastPages = 0;
@@ -1055,7 +1055,7 @@ public class CommitLog {
                     // 刷盘是否设置了定时,默认否
                     if (flushCommitLogTimed) {
                         Thread.sleep(interval);
-                    } else {  //等待500毫秒后执行
+                    } else {  //当没有消息触发wakeup()时,每休眠500毫秒执行一次flush;  当commit消息后触发wakeup(),若正在休眠则直接终止休眠，若不在休眠则跳过下次休眠
                         this.waitForRunning(interval);
                     }
 
@@ -1065,6 +1065,7 @@ public class CommitLog {
 
                     // flush commitLog
                     long begin = System.currentTimeMillis();
+                    //刷盘至少需要4页数据，也就是16KB
                     CommitLog.this.mappedFileQueue.flush(flushPhysicQueueLeastPages);
                     long storeTimestamp = CommitLog.this.mappedFileQueue.getStoreTimestamp();
                     if (storeTimestamp > 0) {

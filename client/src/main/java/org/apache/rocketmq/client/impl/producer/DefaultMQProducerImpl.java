@@ -707,7 +707,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         //
         SendMessageContext context = null;
         if (brokerAddr != null) {
-            // 是否使用broker vip通道。broker会开启两个端口对外服务。
+            // 是否使用broker vip通道。broker会开启两个端口对外服务,VIP通道的端口是： 原始端口-2
             brokerAddr = MixAll.brokerVIPChannel(this.defaultMQProducer.isSendMessageWithVIPChannel(), brokerAddr);
             byte[] prevBody = msg.getBody(); // 记录消息内容。下面逻辑可能改变消息内容，例如消息压缩。
             try {
