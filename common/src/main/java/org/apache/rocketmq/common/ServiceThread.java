@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 服务线程
  */
 public abstract class ServiceThread implements Runnable {
+
     private static final Logger STLOG = LoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
     private static final long JOIN_TIME = 90 * 1000;
 
@@ -127,6 +128,7 @@ public abstract class ServiceThread implements Runnable {
      * @param interval 等待时长
      */
     protected void waitForRunning(long interval) {
+        //当hasNotified==true时，表示刷盘资源未被其他线程占用,设置为false,同时不再休眠直接返回
         if (hasNotified.compareAndSet(true, false)) {
             this.onWaitEnd();
             return;
@@ -140,6 +142,7 @@ public abstract class ServiceThread implements Runnable {
         } catch (InterruptedException e) {
             e.printStackTrace();
         } finally {
+            //提前占位刷盘资源,当其他线程想要使用此资源时先休眠interval时长
             hasNotified.set(false);
             this.onWaitEnd();
         }
