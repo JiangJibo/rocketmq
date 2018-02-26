@@ -38,7 +38,7 @@ public abstract class ServiceThread implements Runnable {
      * 等待标识
      */
     protected final CountDownLatch2 waitPoint = new CountDownLatch2(1);
-    // TODO 疑问：这个变量的用途没看懂？
+    //刷盘资源是否被占用的标识
     protected volatile AtomicBoolean hasNotified = new AtomicBoolean(false);
     /**
      * 是否停止
@@ -124,7 +124,7 @@ public abstract class ServiceThread implements Runnable {
      * 等待 interval毫秒 运行
      * 如果 {@link #hasNotified} 为 true 时，等待直接结束。
      *
-     * @param interval 等待市场
+     * @param interval 等待时长
      */
     protected void waitForRunning(long interval) {
         if (hasNotified.compareAndSet(true, false)) {

@@ -1031,6 +1031,7 @@ public class CommitLog {
          */
         private long printTimes = 0;
 
+        @Override
         public void run() {
             CommitLog.log.info(this.getServiceName() + " service started");
 
@@ -1041,7 +1042,7 @@ public class CommitLog {
                 int flushPhysicQueueThoroughInterval = CommitLog.this.defaultMessageStore.getMessageStoreConfig().getFlushCommitLogThoroughInterval();
 
                 // Print flush progress
-                // 当时间满足flushPhysicQueueThoroughInterval时，即使写入的数量不足flushPhysicQueueLeastPages，也进行flush
+                // 当时间满足flushPhysicQueueThoroughInterval(10秒)时，即使写入的数量不足flushPhysicQueueLeastPages，也进行flush
                 boolean printFlushProgress = false;
                 long currentTimeMillis = System.currentTimeMillis();
                 if (currentTimeMillis >= (this.lastFlushTimestamp + flushPhysicQueueThoroughInterval)) {
@@ -1051,10 +1052,10 @@ public class CommitLog {
                 }
 
                 try {
-                    // 等待执行
+                    // 刷盘是否设置了定时,默认否
                     if (flushCommitLogTimed) {
                         Thread.sleep(interval);
-                    } else {
+                    } else {  //等待500毫秒后执行
                         this.waitForRunning(interval);
                     }
 
