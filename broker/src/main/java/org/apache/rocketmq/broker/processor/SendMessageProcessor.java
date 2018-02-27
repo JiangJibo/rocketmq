@@ -88,7 +88,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
     /**
      * 消费者发回消息
      *
-     * @param ctx ctx
+     * @param ctx     ctx
      * @param request 请求
      * @return 响应
      * @throws RemotingCommandException 当远程调用异常
@@ -99,7 +99,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         // 初始化响应
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
         final ConsumerSendMsgBackRequestHeader requestHeader =
-            (ConsumerSendMsgBackRequestHeader) request.decodeCommandCustomHeader(ConsumerSendMsgBackRequestHeader.class);
+            (ConsumerSendMsgBackRequestHeader)request.decodeCommandCustomHeader(ConsumerSendMsgBackRequestHeader.class);
 
         // hook（独有）
         if (this.hasConsumeMessageHook() && !UtilAll.isBlank(requestHeader.getOriginMsgId())) {
@@ -263,21 +263,21 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
     /**
      * 发送消息
      *
-     * @param ctx channel ctx
-     * @param request 请求
+     * @param ctx                channel ctx
+     * @param request            请求
      * @param sendMessageContext 发送消息ctx
-     * @param requestHeader 发送消息请求
+     * @param requestHeader      发送消息请求
      * @return 响应
      * @throws RemotingCommandException 当远程调用异常
      */
     private RemotingCommand sendMessage(final ChannelHandlerContext ctx, //
-        final RemotingCommand request, //
-        final SendMessageContext sendMessageContext, //
-        final SendMessageRequestHeader requestHeader) throws RemotingCommandException {
+                                        final RemotingCommand request, //
+                                        final SendMessageContext sendMessageContext, //
+                                        final SendMessageRequestHeader requestHeader) throws RemotingCommandException {
 
         // 初始化响应
         final RemotingCommand response = RemotingCommand.createResponseCommand(SendMessageResponseHeader.class);
-        final SendMessageResponseHeader responseHeader = (SendMessageResponseHeader) response.readCustomHeader();
+        final SendMessageResponseHeader responseHeader = (SendMessageResponseHeader)response.readCustomHeader();
         response.setOpaque(request.getOpaque());
         response.addExtField(MessageConst.PROPERTY_MSG_REGION, this.brokerController.getBrokerConfig().getRegionId());
         response.addExtField(MessageConst.PROPERTY_TRACE_SWITCH, String.valueOf(this.brokerController.getBrokerConfig().isTraceOn()));
@@ -311,8 +311,8 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             queueIdInt = Math.abs(this.random.nextInt() % 99999999) % topicConfig.getWriteQueueNums();
         }
 
-        //
         int sysFlag = requestHeader.getSysFlag();
+        //创建时默认是TopicFilterType.SINGLE_TAG
         if (TopicFilterType.MULTI_TAG == topicConfig.getTopicFilterType()) {
             sysFlag |= MessageSysFlag.MULTI_TAGS_FLAG;
         }
@@ -409,7 +409,8 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                 case PROPERTIES_SIZE_EXCEEDED:
                     response.setCode(ResponseCode.MESSAGE_ILLEGAL);
                     response.setRemark(
-                        "the message is illegal, maybe msg body or properties length not matched. msg body length limit 128k, msg properties length limit 32k.");
+                        "the message is illegal, maybe msg body or properties length not matched. msg body length limit 128k, msg properties length limit 32k"
+                            + ".");
                     break;
                 case SERVICE_NOT_AVAILABLE:
                     response.setCode(ResponseCode.SERVICE_NOT_AVAILABLE);
@@ -452,7 +453,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
 
                     int commercialBaseCount = brokerController.getBrokerConfig().getCommercialBaseCount();
                     int wroteSize = putMessageResult.getAppendMessageResult().getWroteBytes();
-                    int incValue = (int) Math.ceil(wroteSize / BrokerStatsManager.SIZE_PER_COUNT) * commercialBaseCount;
+                    int incValue = (int)Math.ceil(wroteSize / BrokerStatsManager.SIZE_PER_COUNT) * commercialBaseCount;
 
                     sendMessageContext.setCommercialSendStats(BrokerStatsManager.StatsType.SEND_SUCCESS);
                     sendMessageContext.setCommercialSendTimes(incValue);
@@ -464,7 +465,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                 // hook：设置发送失败到context
                 if (hasSendMessageHook()) {
                     int wroteSize = request.getBody().length;
-                    int incValue = (int) Math.ceil(wroteSize / BrokerStatsManager.SIZE_PER_COUNT);
+                    int incValue = (int)Math.ceil(wroteSize / BrokerStatsManager.SIZE_PER_COUNT);
 
                     sendMessageContext.setCommercialSendStats(BrokerStatsManager.StatsType.SEND_FAILURE);
                     sendMessageContext.setCommercialSendTimes(incValue);
