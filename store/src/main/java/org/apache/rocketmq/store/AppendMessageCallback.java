@@ -26,6 +26,7 @@ public interface AppendMessageCallback {
 
     /**
      * After message serialization, write MappedByteBuffer
+     * 仅仅是将消息写入MappedFile的MappedByteBuffer中，还没有实际Commit及Flush
      *
      * @param fileFromOffset 相对于整个 broker 的offset
      * @param byteBuffer 文件字节流缓冲区

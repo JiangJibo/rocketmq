@@ -635,7 +635,7 @@ public class CommitLog {
         MappedFile unlockMappedFile = null;
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
 
-        // 获取写入锁,限制同一时间只能有一个线程进行磁盘的写入工作
+        // 获取追加锁,限制同一时间只能有一个线程进行MappedByteBuffer的追加工作
         lockForPutMessage(); //spin...
         try {
             long beginLockTimestamp = this.defaultMessageStore.getSystemClock().now();
@@ -655,7 +655,7 @@ public class CommitLog {
                 return new PutMessageResult(PutMessageStatus.CREATE_MAPEDFILE_FAILED, null);
             }
 
-            // 存储消息
+            // 将消息追加到MappedFile的MappedByteBuffer中,更新其写入位置wrotePosition,但还没Commit及Flush
             result = mappedFile.appendMessage(msg, this.appendMessageCallback);
             switch (result.getStatus()) {
                 case PUT_OK:
@@ -687,7 +687,7 @@ public class CommitLog {
             eclipseTimeInLock = this.defaultMessageStore.getSystemClock().now() - beginLockTimestamp;
             beginTimeInLock = 0;
         } finally {
-            // 释放写入锁
+            // 释放追加锁
             releasePutMessageLock();
         }
 
@@ -727,9 +727,9 @@ public class CommitLog {
         // Asynchronous flush
         else {
             if (!this.defaultMessageStore.getMessageStoreConfig().isTransientStorePoolEnable()) {
-                flushCommitLogService.wakeup(); //异步刷盘,且关闭内存字节缓冲区
+                flushCommitLogService.wakeup(); //异步刷盘,使用MappedByteBuffer,默认策略
             } else {
-                commitLogService.wakeup();  //异步刷盘,开启了内存字节缓冲区
+                commitLogService.wakeup();  //异步刷盘,使用字节缓冲区+FileChannel
             }
         }
 
@@ -980,7 +980,7 @@ public class CommitLog {
                 int commitDataThoroughInterval = CommitLog.this.defaultMessageStore.getMessageStoreConfig().getCommitCommitLogThoroughInterval();
 
                 long begin = System.currentTimeMillis();
-                //当最近200毫秒内没有消息Commit时,此次Commit触发刷盘
+                //当最近200毫秒内没有消息Commit时,此次消息触发Commit
                 if (begin >= (this.lastCommitTimestamp + commitDataThoroughInterval)) {
                     this.lastCommitTimestamp = begin;
                     commitDataLeastPages = 0;
@@ -1280,7 +1280,7 @@ public class CommitLog {
         public AppendMessageResult doAppend(final long fileFromOffset, final ByteBuffer byteBuffer, final int maxBlank, final MessageExtBrokerInner msgInner) {
             // STORETIMESTAMP + STOREHOSTADDRESS + OFFSET <br>
 
-            // PHY OFFSET
+            //物理写入偏移量,也就是在存入了当前消息后的偏移量
             long wroteOffset = fileFromOffset + byteBuffer.position();
 
             // 计算commitLog里的msgId
@@ -1333,7 +1333,7 @@ public class CommitLog {
                 return new AppendMessageResult(AppendMessageStatus.MESSAGE_SIZE_EXCEEDED);
             }
 
-            // 如果文件已经接近满额,剩余空间容纳不下当前消息
+            // 如果文件已经接近满额,剩余空间容纳不下当前消息, maxBlank ：当前剩余空间
             if ((msgLen + END_FILE_MIN_BLANK_LENGTH) > maxBlank) {
                 this.resetByteBuffer(this.msgStoreItemMemory, maxBlank);
                 // 1 TOTAL_SIZE
