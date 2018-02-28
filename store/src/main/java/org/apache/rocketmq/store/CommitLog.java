@@ -635,7 +635,7 @@ public class CommitLog {
         MappedFile unlockMappedFile = null;
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
 
-        // 获取追加锁,限制同一时间只能有一个线程进行MappedByteBuffer的追加工作
+        // 获取追加锁,限制同一时间只能有一个线程进行数据的Put工作
         lockForPutMessage(); //spin...
         try {
             long beginLockTimestamp = this.defaultMessageStore.getSystemClock().now();
@@ -655,7 +655,7 @@ public class CommitLog {
                 return new PutMessageResult(PutMessageStatus.CREATE_MAPEDFILE_FAILED, null);
             }
 
-            // 将消息追加到MappedFile的MappedByteBuffer中,更新其写入位置wrotePosition,但还没Commit及Flush
+            // 将消息追加到MappedFile的MappedByteBuffer/writeBuffer中,更新其写入位置wrotePosition,但还没Commit及Flush
             result = mappedFile.appendMessage(msg, this.appendMessageCallback);
             switch (result.getStatus()) {
                 case PUT_OK:
@@ -687,7 +687,7 @@ public class CommitLog {
             eclipseTimeInLock = this.defaultMessageStore.getSystemClock().now() - beginLockTimestamp;
             beginTimeInLock = 0;
         } finally {
-            // 释放追加锁
+            // 释放锁
             releasePutMessageLock();
         }
 
@@ -695,7 +695,6 @@ public class CommitLog {
             log.warn("[NOTIFYME]putMessage in lock cost time(ms)={}, bodyLength={} AppendMessageResult={}", eclipseTimeInLock, msg.getBody().length, result);
         }
 
-        // TODO 待读：
         if (null != unlockMappedFile && this.defaultMessageStore.getMessageStoreConfig().isWarmMapedFileEnable()) {
             this.defaultMessageStore.unlockMappedFile(unlockMappedFile);
         }
@@ -990,8 +989,8 @@ public class CommitLog {
                     //Commit需要缓冲区内至少含有4页数据，也就是16KB,或者是最近200毫秒内没有消息Commit
                     boolean result = CommitLog.this.mappedFileQueue.commit(commitDataLeastPages);
                     long end = System.currentTimeMillis();
-                    if (!result) { // TODO 疑问：未写入成功，为啥要唤醒flushCommitLogService
-                        this.lastCommitTimestamp = end; // result = false means some data committed.
+                    if (!result) {   //代表着writeBuffer里的数据commit到了fileChannel中，可能是writeBuffer里数据超过16KB或者最近200毫秒内没有消息Commit
+                        this.lastCommitTimestamp = end;
                         //now wake up flush thread.
                         flushCommitLogService.wakeup();
                     }
@@ -1006,7 +1005,7 @@ public class CommitLog {
                     CommitLog.log.error(this.getServiceName() + " service has exception. ", e);
                 }
             }
-
+            //在循环退出也就是CommitLog Stop停止时，强制刷盘
             boolean result = false;
             for (int i = 0; i < RETRY_TIMES_OVER && !result; i++) {
                 result = CommitLog.this.mappedFileQueue.commit(0);

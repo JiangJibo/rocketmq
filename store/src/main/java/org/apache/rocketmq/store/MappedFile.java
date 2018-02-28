@@ -403,25 +403,25 @@ public class MappedFile extends ReferenceResource {
     /**
      * 是否能够flush。满足如下条件任意条件：
      * 1. 映射文件已经写满
-     * 2. flushLeastPages > 0 && 未flush部分超过flushLeastPages
-     * 3. flushLeastPages = 0 && 有新写入部分
+     * 2. 当开启了字节缓冲池时,Commit到fileChannel内超过flushLeastPages(4*4KB);  未开启字节缓冲池,则write到mappedByteBuffer内超过flushLeastPages(4*4KB)
+     * 3. 当开启了字节缓冲池时,距离上次commit超过200毫秒; 未开启字节缓冲池,距离上次flush超过10秒
      *
      * @param flushLeastPages flush最小分页
      * @return 是否能够写入
      */
     private boolean isAbleToFlush(final int flushLeastPages) {
         int flush = this.flushedPosition.get();
-        int write = getReadPosition();
+        int writeOrCommit = getReadPosition();
 
         if (this.isFull()) {
             return true;
         }
 
         if (flushLeastPages > 0) {
-            return ((write / OS_PAGE_SIZE) - (flush / OS_PAGE_SIZE)) >= flushLeastPages;
+            return ((writeOrCommit / OS_PAGE_SIZE) - (flush / OS_PAGE_SIZE)) >= flushLeastPages;
         }
 
-        return write > flush;
+        return writeOrCommit > flush;
     }
 
     /**
