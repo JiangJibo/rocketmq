@@ -41,6 +41,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
+ * {@link #wrotePosition}代表着追加到MappedByteBuffer/writeBuffer的位置,具体哪个要看是否有字节缓冲池
+ *
+ * {@link #committedPosition}代表着将{@link #writeBuffer}内的数据写入到文件通道{@link #fileChannel}的位置，一般要满足{@link #writeBuffer}内数据大于16KB时才触发Commit
+ *
+ * {@link #flushedPosition}代表着刷盘位置，可能是{@link #mappedByteBuffer}或者{@link #fileChannel}进行force()前置刷盘, 值最小
+ *
+ * 异步刷盘有两种策略，一种是通过字节缓冲池+FileChannel实现;另一种是通过MappedByteBuffer实现
+ * 默认使用MappedByteBuffer，借助其内存映射特性获得极高的写入性能
+ *
  * 映射文件
  */
 public class MappedFile extends ReferenceResource {
@@ -60,7 +69,7 @@ public class MappedFile extends ReferenceResource {
      */
     private static final AtomicInteger TOTAL_MAPPED_FILES = new AtomicInteger(0);
     /**
-     * 当前写入位置，下次开始写入的开始位置
+     * 当前追加到MappedByteBuffer的位置
      */
     protected final AtomicInteger wrotePosition = new AtomicInteger(0);
     /**
@@ -144,8 +153,7 @@ public class MappedFile extends ReferenceResource {
     }
 
     public static void clean(final ByteBuffer buffer) {
-        if (buffer == null || !buffer.isDirect() || buffer.capacity() == 0)
-            return;
+        if (buffer == null || !buffer.isDirect() || buffer.capacity() == 0) { return; }
         invoke(invoke(viewed(buffer), "cleaner"), "clean");
     }
 
@@ -183,11 +191,8 @@ public class MappedFile extends ReferenceResource {
             }
         }
 
-        ByteBuffer viewedBuffer = (ByteBuffer) invoke(buffer, methodName);
-        if (viewedBuffer == null)
-            return buffer;
-        else
-            return viewed(viewedBuffer);
+        ByteBuffer viewedBuffer = (ByteBuffer)invoke(buffer, methodName);
+        if (viewedBuffer == null) { return buffer; } else { return viewed(viewedBuffer); }
     }
 
     public static int getTotalMappedFiles() {
@@ -206,6 +211,7 @@ public class MappedFile extends ReferenceResource {
 
     /**
      * 初始化fileChannel、mappedByteBuffer
+     *
      * @param fileName 文件名
      * @param fileSize 文件大小
      * @throws IOException 文件不存在 or io异常
@@ -255,7 +261,7 @@ public class MappedFile extends ReferenceResource {
      * 实际是插入映射文件buffer
      *
      * @param msg 消息
-     * @param cb 逻辑
+     * @param cb  逻辑
      * @return 附加消息结果
      */
     public AppendMessageResult appendMessage(final MessageExtBrokerInner msg, final AppendMessageCallback cb) {
@@ -340,7 +346,7 @@ public class MappedFile extends ReferenceResource {
 
     /**
      * commit
-     * 当{@link #writeBuffer}为null时，直接返回{@link #wrotePosition}
+     * 当{@link #writeBuffer}为null时代表着未开启字节缓冲池，直接返回{@link #wrotePosition}
      *
      * @param commitLeastPages commit最小页数
      * @return 当前commit位置
@@ -369,7 +375,8 @@ public class MappedFile extends ReferenceResource {
     }
 
     /**
-     * commit实现，将writeBuffer写入fileChannel。
+     * commit实现，将writeBuffer写入fileChannel,更新committedPosition = wrotePosition
+     *
      * @param commitLeastPages commit最小页数。用不上该参数
      */
     protected void commit0(final int commitLeastPages) {
@@ -427,7 +434,7 @@ public class MappedFile extends ReferenceResource {
      * @return 是否能够写入
      */
     protected boolean isAbleToCommit(final int commitLeastPages) {
-        int flush = this.committedPosition.get();
+        int commit = this.committedPosition.get();
         int write = this.wrotePosition.get();
 
         if (this.isFull()) {
@@ -435,10 +442,10 @@ public class MappedFile extends ReferenceResource {
         }
 
         if (commitLeastPages > 0) {
-            return ((write / OS_PAGE_SIZE) - (flush / OS_PAGE_SIZE)) >= commitLeastPages;
+            return ((write / OS_PAGE_SIZE) - (commit / OS_PAGE_SIZE)) >= commitLeastPages;
         }
 
-        return write > flush;
+        return write > commit;
     }
 
     public int getFlushedPosition() {
@@ -456,10 +463,10 @@ public class MappedFile extends ReferenceResource {
     /**
      * 根据 pos 获取 指定size 映射Buffer
      *
-     * @see #getReadPosition()
-     * @param pos 当前 Buffer 的 pos
+     * @param pos  当前 Buffer 的 pos
      * @param size 长度
      * @return 映射Buffer
+     * @see #getReadPosition()
      */
     public SelectMappedBufferResult selectMappedBuffer(int pos, int size) {
         int readPosition = getReadPosition();
@@ -486,9 +493,9 @@ public class MappedFile extends ReferenceResource {
     /**
      * 根据 pos 获取 映射Buffer
      *
-     * @see #getReadPosition()
      * @param pos 当前 Buffer 的 pos
      * @return 映射Buffer
+     * @see #getReadPosition()
      */
     public SelectMappedBufferResult selectMappedBuffer(int pos) {
         int readPosition = getReadPosition();
@@ -579,7 +586,7 @@ public class MappedFile extends ReferenceResource {
         int flush = 0;
         long time = System.currentTimeMillis();
         for (int i = 0, j = 0; i < this.fileSize; i += MappedFile.OS_PAGE_SIZE, j++) {
-            byteBuffer.put(i, (byte) 0);
+            byteBuffer.put(i, (byte)0);
             // force flush when flush disk type is sync
             if (type == FlushDiskType.SYNC_FLUSH) {
                 if ((i / OS_PAGE_SIZE) - (flush / OS_PAGE_SIZE) >= pages) {
@@ -638,7 +645,7 @@ public class MappedFile extends ReferenceResource {
 
     public void mlock() {
         final long beginTime = System.currentTimeMillis();
-        final long address = ((DirectBuffer) (this.mappedByteBuffer)).address();
+        final long address = ((DirectBuffer)(this.mappedByteBuffer)).address();
         Pointer pointer = new Pointer(address);
         {
             int ret = LibC.INSTANCE.mlock(pointer, new NativeLong(this.fileSize));
@@ -653,7 +660,7 @@ public class MappedFile extends ReferenceResource {
 
     public void munlock() {
         final long beginTime = System.currentTimeMillis();
-        final long address = ((DirectBuffer) (this.mappedByteBuffer)).address();
+        final long address = ((DirectBuffer)(this.mappedByteBuffer)).address();
         Pointer pointer = new Pointer(address);
         int ret = LibC.INSTANCE.munlock(pointer, new NativeLong(this.fileSize));
         log.info("munlock {} {} {} ret = {} time consuming = {}", address, this.fileName, this.fileSize, ret, System.currentTimeMillis() - beginTime);
