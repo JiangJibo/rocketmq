@@ -482,7 +482,7 @@ public class MappedFileQueue {
         if (mappedFile != null) {
             int offset = mappedFile.commit(commitLeastPages);
             long where = mappedFile.getFileFromOffset() + offset;
-            result = where == this.committedWhere;
+            result = where == this.committedWhere;  //当Commit成功后，(where = wrotePosition) > (this.committedWhere = 上次commit的位置),所以返回false
             this.committedWhere = where;
         }
 
