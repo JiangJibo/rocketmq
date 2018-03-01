@@ -1741,7 +1741,7 @@ public class DefaultMessageStore implements MessageStore {
                     try {
                         this.reputFromOffset = result.getStartOffset();
 
-                        //每读一轮,消息前4字节表示消息总长度,每次读取这个长度,生成一条消息,如果还有剩余的就继续读
+                        //每读一轮,消息前4字节表示消息总长度,按消息存储结构读取,如果还有剩余的就继续读
                         for (int readSize = 0; readSize < result.getSize() && doNext; ) {
                             // 生成重放消息重放调度请求,从mappedByteBuffer中读取字节，解析成消息
                             DispatchRequest dispatchRequest = DefaultMessageStore.this.commitLog.checkMessageAndReturnSize(result.getByteBuffer(), false,
