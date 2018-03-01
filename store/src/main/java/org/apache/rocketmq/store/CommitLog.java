@@ -1292,7 +1292,8 @@ public class CommitLog {
             keyBuilder.append(msgInner.getTopic());
             keyBuilder.append('-');
             keyBuilder.append(msgInner.getQueueId());
-            String key = keyBuilder.toString();
+            String key = keyBuilder.toString();   //tpoic-queueId
+            //记录这条消息的消费信息在当前队列的序号,也就是第几条消息
             Long queueOffset = CommitLog.this.topicQueueTable.get(key);
             if (null == queueOffset) {
                 queueOffset = 0L;

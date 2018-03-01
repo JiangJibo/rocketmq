@@ -225,7 +225,7 @@ public class MappedFileQueue {
         }
 
         if (mappedFileLast != null && mappedFileLast.isFull()) { // 最后一个文件已满
-            createOffset = mappedFileLast.getFileFromOffset() + this.mappedFileSize;  //文件名称是上个文件名+1G字节，(每个文件名称=文件个数-1) * (1024*1024*1024)
+            createOffset = mappedFileLast.getFileFromOffset() + this.mappedFileSize;  //文件名称是上个文件名+mappedFileSize字节，(每个文件名称=文件个数-1) * mappedFileSize
         }
 
         if (createOffset != -1 && needCreate) { // 创建文件

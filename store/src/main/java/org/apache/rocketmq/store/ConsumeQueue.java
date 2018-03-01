@@ -25,17 +25,17 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
- * 消费队列
+ * 消费队列,存储消息在CommotLog的全局偏移量,消息长度,Message Tag HashCode
  */
 public class ConsumeQueue {
 
-    public static final int CQ_STORE_UNIT_SIZE = 20;
+    public static final int CQ_STORE_UNIT_SIZE = 20;  //消费队列存储单元大小,即每条消息相关信息大小，20字节,8个字节的偏移量,4个字节的消息长度,8个字节的Tag HashCode
     private static final Logger log = LoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private static final Logger LOG_ERROR = LoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);
 
     private final DefaultMessageStore defaultMessageStore;
     /**
-     * 映射文件队列
+     * 封装了指定topic的指定queue的文件目录,类似CommitLog
      */
     private final MappedFileQueue mappedFileQueue;
     /**
@@ -51,11 +51,11 @@ public class ConsumeQueue {
      */
     private final ByteBuffer byteBufferIndex;
     /**
-     * 文件存储地址
+     * 文件存储目录,${user.home}/store/consumequeue
      */
     private final String storePath;
     /**
-     * 每个映射文件大小,默认300000
+     * 每个映射文件大小,默认300000*20=6000000,也就是每个ConsumerQueue大小为5.72MB=5860KB=6000000B,实际文件大小就是如此
      */
     private final int mappedFileSize;
     /**
@@ -77,10 +77,12 @@ public class ConsumeQueue {
         this.topic = topic;
         this.queueId = queueId;
 
+        //ConsumeQueue存储目录,${user.home}\store\consumequeue\tpoic\queueId
+        //比如 C:\Users\Administrator\store\consumequeue\test1\1
         String queueDir = this.storePath
             + File.separator + topic
             + File.separator + queueId;
-
+        //针对ConsumeQueue的存储目录生成一个MappedFileQueue,类似CommitLog,将目录封装成一个MappedFileQueue,对外提供无限量的存储空间
         this.mappedFileQueue = new MappedFileQueue(queueDir, mappedFileSize, null);
 
         this.byteBufferIndex = ByteBuffer.allocate(CQ_STORE_UNIT_SIZE);
@@ -97,8 +99,7 @@ public class ConsumeQueue {
         if (!mappedFiles.isEmpty()) {
             // TODO 疑问：-3的目的是？
             int index = mappedFiles.size() - 3;
-            if (index < 0)
-                index = 0;
+            if (index < 0) { index = 0; }
 
             int mappedFileSizeLogics = this.mappedFileSize;
             MappedFile mappedFile = mappedFiles.get(index); // 当前遍历 MappedFile
@@ -156,7 +157,7 @@ public class ConsumeQueue {
         if (mappedFile != null) {
             long offset = 0;
             int low =
-                minLogicOffset > mappedFile.getFileFromOffset() ? (int) (minLogicOffset - mappedFile
+                minLogicOffset > mappedFile.getFileFromOffset() ? (int)(minLogicOffset - mappedFile
                     .getFileFromOffset()) : 0;
             int high = 0;
             int midOffset = -1, targetOffset = -1, leftOffset = -1, rightOffset = -1;
@@ -290,8 +291,7 @@ public class ConsumeQueue {
         if (mappedFile != null) {
 
             int position = mappedFile.getWrotePosition() - CQ_STORE_UNIT_SIZE;
-            if (position < 0)
-                position = 0;
+            if (position < 0) { position = 0; }
 
             ByteBuffer byteBuffer = mappedFile.sliceByteBuffer();
             byteBuffer.position(position);
@@ -356,14 +356,14 @@ public class ConsumeQueue {
     /**
      * 添加位置信息封装
      *
-     * @param offset commitLog存储位置
-     * @param size 消息长度
-     * @param tagsCode 消息tagsCode
+     * @param offset         commitLog存储位置
+     * @param size           消息长度
+     * @param tagsCode       Message Tag HashCode ,主要用于订阅时消息过滤（订阅时如果指定了Tag，会根据HashCode来快速查找到订阅的消息）
      * @param storeTimestamp 消息存储时间
-     * @param logicOffset 队列位置
+     * @param logicOffset    此消息在ConsumeQueue的序号,也就是这条消息是当前Queue的第几条信息
      */
     public void putMessagePositionInfoWrapper(long offset, int size, long tagsCode, long storeTimestamp,
-        long logicOffset) {
+                                              long logicOffset) {
         final int maxRetries = 30;
         boolean canWrite = this.defaultMessageStore.getRunningFlags().isWriteable();
         // 多次循环写，直到成功
@@ -395,14 +395,14 @@ public class ConsumeQueue {
     /**
      * 添加位置信息，并返回添加是否成功
      *
-     * @param offset commitLog存储位置
-     * @param size 消息长度
-     * @param tagsCode 消息tagsCode
-     * @param cqOffset 队列位置
+     * @param offset   这条消息在Commit Log文件中的实际偏移量
+     * @param size     消息长度
+     * @param tagsCode Message Tag HashCode ,主要用于订阅时消息过滤（订阅时如果指定了Tag，会根据HashCode来快速查找到订阅的消息）
+     * @param cqOffset 当前消息的消费信息在ConsumeQueue里的序号
      * @return 是否成功
      */
     private boolean putMessagePositionInfo(final long offset, final int size, final long tagsCode,
-        final long cqOffset) {
+                                           final long cqOffset) {
         // 如果已经重放过，直接返回成功
         if (offset <= this.maxPhysicOffset) {
             return true;
@@ -418,7 +418,8 @@ public class ConsumeQueue {
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile(expectLogicOffset);
         if (mappedFile != null) {
             // 当是ConsumeQueue第一个MappedFile && 队列位置非第一个 && MappedFile未写入内容，则填充前置空白占位
-            if (mappedFile.isFirstCreateInQueue() && cqOffset != 0 && mappedFile.getWrotePosition() == 0) { // TODO 疑问：为啥这个操作。目前能够想象到的是，一些老的消息很久没发送，突然发送，这个时候刚好满足。
+            if (mappedFile.isFirstCreateInQueue() && cqOffset != 0
+                && mappedFile.getWrotePosition() == 0) { // TODO 疑问：为啥这个操作。目前能够想象到的是，一些老的消息很久没发送，突然发送，这个时候刚好满足。
                 this.minLogicOffset = expectLogicOffset;
                 this.mappedFileQueue.setFlushedWhere(expectLogicOffset);
                 this.mappedFileQueue.setCommittedWhere(expectLogicOffset);
@@ -426,7 +427,7 @@ public class ConsumeQueue {
                 log.info("fill pre blank space " + mappedFile.getFileName() + " " + expectLogicOffset + " "
                     + mappedFile.getWrotePosition());
             }
-            // 校验consumeQueue存储位置是否合法。TODO 如果不合法，继续写入会不会有问题？
+
             if (cqOffset != 0) {
                 long currentLogicOffset = mappedFile.getWrotePosition() + mappedFile.getFileFromOffset();
                 if (expectLogicOffset != currentLogicOffset) {
@@ -461,7 +462,7 @@ public class ConsumeQueue {
         byteBuffer.putInt(Integer.MAX_VALUE);
         byteBuffer.putLong(0L);
         // 循环填空
-        int until = (int) (untilWhere % this.mappedFileQueue.getMappedFileSize());
+        int until = (int)(untilWhere % this.mappedFileQueue.getMappedFileSize());
         for (int i = 0; i < until; i += CQ_STORE_UNIT_SIZE) {
             mappedFile.appendMessage(byteBuffer.array());
         }
@@ -479,7 +480,7 @@ public class ConsumeQueue {
         if (offset >= this.getMinLogicOffset()) {
             MappedFile mappedFile = this.mappedFileQueue.findMappedFileByOffset(offset);
             if (mappedFile != null) {
-                SelectMappedBufferResult result = mappedFile.selectMappedBuffer((int) (offset % mappedFileSize));
+                SelectMappedBufferResult result = mappedFile.selectMappedBuffer((int)(offset % mappedFileSize));
                 return result;
             }
         }

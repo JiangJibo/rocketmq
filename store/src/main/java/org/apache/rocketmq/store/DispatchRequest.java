@@ -26,7 +26,7 @@ public class DispatchRequest {
     private final int msgSize;
     private final long tagsCode;
     private final long storeTimestamp;
-    private final long consumeQueueOffset;
+    private final long consumeQueueOffset;  //在ConsumeQueue里的序号,也就是这条消息是当前Queue的第几条消息
     private final String keys;
     private final boolean success;
     private final String uniqKey;

@@ -1015,6 +1015,8 @@ public class DefaultMessageStore implements MessageStore {
 
     /**
      * 根据 主题 + 队列编号 获取 消费队列
+     * 如果不存在，则创建一个目录../consumequeue/topic/queueId，将这个目录封装成一个MappedFileQueue后存入ConsumeQueue中,对外提供无限量空间
+     * 目录内的每个消费信息文件大小为6000000B，也就是5.72MB，目录名称类似CommitLog,第一个就是000000000000，第二个为000000000000+1*fileSize=000006000000
      *
      * @param topic   主题
      * @param queueId 队列编号
@@ -1035,11 +1037,11 @@ public class DefaultMessageStore implements MessageStore {
         // 获取 queueId 对应的 消费队列
         ConsumeQueue logic = map.get(queueId);
         if (null == logic) {
-            ConsumeQueue newLogic = new ConsumeQueue(//
-                topic, //
-                queueId, //
-                StorePathConfigHelper.getStorePathConsumeQueue(this.messageStoreConfig.getStorePathRootDir()), //
-                this.getMessageStoreConfig().getMapedFileSizeConsumeQueue(), //
+            ConsumeQueue newLogic = new ConsumeQueue(
+                topic,
+                queueId,
+                StorePathConfigHelper.getStorePathConsumeQueue(this.messageStoreConfig.getStorePathRootDir()),  //rootDir + File.separator + "consumequeue"
+                this.getMessageStoreConfig().getMapedFileSizeConsumeQueue(),   // 6000000(字节)
                 this);
             ConsumeQueue oldLogic = map.putIfAbsent(queueId, newLogic);
             if (oldLogic != null) {
@@ -1362,7 +1364,7 @@ public class DefaultMessageStore implements MessageStore {
      * @param queueId        队列编号
      * @param offset         commitLog存储位置
      * @param size           消息长度
-     * @param tagsCode       消息tagsCode
+     * @param tagsCode       Message Tag HashCode ,主要用于订阅时消息过滤（订阅时如果指定了Tag，会根据HashCode来快速查找到订阅的消息）
      * @param storeTimestamp 存储时间
      * @param logicOffset    队列位置
      */
@@ -1749,7 +1751,7 @@ public class DefaultMessageStore implements MessageStore {
                             int size = dispatchRequest.getMsgSize(); // 消息长度
                             // 根据请求的结果处理
                             if (dispatchRequest.isSuccess()) {
-                                if (size > 0) { // 读取Message
+                                if (size > 0) { // 成功读取Message
                                     DefaultMessageStore.this.doDispatch(dispatchRequest);
                                     // 通知有新消息
                                     if (BrokerRole.SLAVE != DefaultMessageStore.this.getMessageStoreConfig().getBrokerRole()

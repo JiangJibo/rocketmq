@@ -293,7 +293,9 @@ public class MappedFile extends ReferenceResource {
     }
 
     /**
-     * TODO 疑问：调用方是
+     *
+     * @param data
+     * @return
      */
     public boolean appendMessage(final byte[] data) {
         int currentPos = this.wrotePosition.get();
