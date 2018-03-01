@@ -24,7 +24,7 @@ import java.nio.ByteBuffer;
 public class SelectMappedBufferResult {
 
     /**
-     * byteBuffer
+     * 引用mappedByteBuffer数据数组的一段
      */
     private final ByteBuffer byteBuffer;
     /**
@@ -64,12 +64,12 @@ public class SelectMappedBufferResult {
         return mappedFile;
     }
 
-//    @Override
-//    protected void finalize() {
-//        if (this.mappedFile != null) {
-//            this.release();
-//        }
-//    }
+    //    @Override
+    //    protected void finalize() {
+    //        if (this.mappedFile != null) {
+    //            this.release();
+    //        }
+    //    }
 
     public synchronized void release() {
         if (this.mappedFile != null) {

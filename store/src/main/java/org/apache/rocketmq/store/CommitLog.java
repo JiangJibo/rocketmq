@@ -181,6 +181,7 @@ public class CommitLog {
 
     /**
      * Read CommitLog data, use data replication
+     * 读取已经Commit但是还未被Reput的数据区段,使用数据副本形式,引用MappedFile的字节数组中的一段
      *
      * @param offset                物理offset
      * @param returnFirstOnNotFound 当未找到时，是否返回第一个commitLog

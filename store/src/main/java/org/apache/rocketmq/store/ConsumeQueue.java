@@ -55,7 +55,7 @@ public class ConsumeQueue {
      */
     private final String storePath;
     /**
-     * 每个映射文件大小
+     * 每个映射文件大小,默认300000
      */
     private final int mappedFileSize;
     /**

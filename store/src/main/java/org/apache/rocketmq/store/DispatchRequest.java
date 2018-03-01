@@ -16,7 +16,10 @@
  */
 package org.apache.rocketmq.store;
 
+import org.apache.rocketmq.common.sysflag.MessageSysFlag;
+
 public class DispatchRequest {
+
     private final String topic;
     private final int queueId;
     private final long commitLogOffset;
@@ -28,6 +31,11 @@ public class DispatchRequest {
     private final boolean success;
     private final String uniqKey;
 
+    /**
+     * 消息标识
+     *
+     * @see MessageSysFlag
+     */
     private final int sysFlag;
     private final long preparedTransactionOffset;
 
