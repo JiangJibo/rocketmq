@@ -22,26 +22,33 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.util.List;
+
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.store.MappedFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 每个IndexFile的大小为420 000 040字节,400.5432510376MB
+ * 文件名称为:20180227110750161 时间的格式化形式,精确到毫秒 2018-02-27:11:07:50.161
+ * 文件路径为${storePath}/index/20180227110750161
+ */
 public class IndexFile {
+
     private static final Logger log = LoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
-    private static int hashSlotSize = 4;
-    private static int indexSize = 20;
+    private static int hashSlotSize = 4; //索引插槽字节大小
+    private static int indexSize = 20; //索引所占字节大小
     private static int invalidIndex = 0;
-    private final int hashSlotNum;
-    private final int indexNum;
+    private final int hashSlotNum;  //5,000,000,构建索引占用的槽位数
+    private final int indexNum;     //20,000,000 ,构建的索引个数
     private final MappedFile mappedFile;
     private final FileChannel fileChannel;
     private final MappedByteBuffer mappedByteBuffer;
     private final IndexHeader indexHeader;
 
     public IndexFile(final String fileName, final int hashSlotNum, final int indexNum,
-        final long endPhyOffset, final long endTimestamp) throws IOException {
-        int fileTotalSize =
+                     final long endPhyOffset, final long endTimestamp) throws IOException {
+        int fileTotalSize =        //40+5000000*4+5000000*4*20 = 420 000 040  =400.5432510376MB
             IndexHeader.INDEX_HEADER_SIZE + (hashSlotNum * hashSlotSize) + (indexNum * indexSize);
         this.mappedFile = new MappedFile(fileName, fileTotalSize);
         this.fileChannel = this.mappedFile.getFileChannel();
@@ -91,7 +98,7 @@ public class IndexFile {
 
     public boolean putKey(final String key, final long phyOffset, final long storeTimestamp) {
         if (this.indexHeader.getIndexCount() < this.indexNum) {
-            int keyHash = indexKeyHashMethod(key);
+            int keyHash = indexKeyHashMethod(key);   //对key取哈希值
             int slotPos = keyHash % this.hashSlotNum;
             int absSlotPos = IndexHeader.INDEX_HEADER_SIZE + slotPos * hashSlotSize;
 
@@ -122,12 +129,12 @@ public class IndexFile {
                     IndexHeader.INDEX_HEADER_SIZE + this.hashSlotNum * hashSlotSize
                         + this.indexHeader.getIndexCount() * indexSize;
 
-                this.mappedByteBuffer.putInt(absIndexPos, keyHash);
-                this.mappedByteBuffer.putLong(absIndexPos + 4, phyOffset);
-                this.mappedByteBuffer.putInt(absIndexPos + 4 + 8, (int) timeDiff);
-                this.mappedByteBuffer.putInt(absIndexPos + 4 + 8 + 4, slotValue);
+                this.mappedByteBuffer.putInt(absIndexPos, keyHash);   //4byte
+                this.mappedByteBuffer.putLong(absIndexPos + 4, phyOffset);  //4byte
+                this.mappedByteBuffer.putInt(absIndexPos + 4 + 8, (int)timeDiff);  //8byte
+                this.mappedByteBuffer.putInt(absIndexPos + 4 + 8 + 4, slotValue);  //4byte
 
-                this.mappedByteBuffer.putInt(absSlotPos, this.indexHeader.getIndexCount());
+                this.mappedByteBuffer.putInt(absSlotPos, this.indexHeader.getIndexCount());  //存储插槽>索引序号,查询是通过插槽找到索引位置
 
                 if (this.indexHeader.getIndexCount() <= 1) {
                     this.indexHeader.setBeginPhyOffset(phyOffset);
@@ -162,8 +169,7 @@ public class IndexFile {
     public int indexKeyHashMethod(final String key) {
         int keyHash = key.hashCode();
         int keyHashPositive = Math.abs(keyHash);
-        if (keyHashPositive < 0)
-            keyHashPositive = 0;
+        if (keyHashPositive < 0) { keyHashPositive = 0; }
         return keyHashPositive;
     }
 
@@ -187,7 +193,7 @@ public class IndexFile {
     }
 
     public void selectPhyOffset(final List<Long> phyOffsets, final String key, final int maxNum,
-        final long begin, final long end, boolean lock) {
+                                final long begin, final long end, boolean lock) {
         if (this.mappedFile.hold()) {
             int keyHash = indexKeyHashMethod(key);
             int slotPos = keyHash % this.hashSlotNum;
@@ -210,7 +216,7 @@ public class IndexFile {
                     || this.indexHeader.getIndexCount() <= 1) {
                     // TODO NOTFOUND
                 } else {
-                    for (int nextIndexToRead = slotValue;;) {
+                    for (int nextIndexToRead = slotValue; ; ) {
                         if (phyOffsets.size() >= maxNum) {
                             break;
                         }
@@ -222,7 +228,7 @@ public class IndexFile {
                         int keyHashRead = this.mappedByteBuffer.getInt(absIndexPos);
                         long phyOffsetRead = this.mappedByteBuffer.getLong(absIndexPos + 4);
 
-                        long timeDiff = (long) this.mappedByteBuffer.getInt(absIndexPos + 4 + 8);
+                        long timeDiff = (long)this.mappedByteBuffer.getInt(absIndexPos + 4 + 8);
                         int prevIndexRead = this.mappedByteBuffer.getInt(absIndexPos + 4 + 8 + 4);
 
                         if (timeDiff < 0) {

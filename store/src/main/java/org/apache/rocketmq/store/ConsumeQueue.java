@@ -430,7 +430,7 @@ public class ConsumeQueue {
 
             if (cqOffset != 0) {
                 long currentLogicOffset = mappedFile.getWrotePosition() + mappedFile.getFileFromOffset();
-                if (expectLogicOffset != currentLogicOffset) {
+                if (expectLogicOffset != currentLogicOffset) {   //421行这种情况
                     LOG_ERROR.warn(
                         "[BUG]logic queue order maybe wrong, expectLogicOffset: {} currentLogicOffset: {} Topic: {} QID: {} Diff: {}",
                         expectLogicOffset,

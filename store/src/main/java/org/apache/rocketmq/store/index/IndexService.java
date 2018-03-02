@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.common.message.MessageConst;
@@ -34,12 +35,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class IndexService {
+
     private static final Logger log = LoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
-    /** Maximum times to attempt index file creation. */
+    /**
+     * Maximum times to attempt index file creation.
+     */
     private static final int MAX_TRY_IDX_CREATE = 3;
     private final DefaultMessageStore defaultMessageStore;
-    private final int hashSlotNum;
-    private final int indexNum;
+    private final int hashSlotNum;   //5000000
+    private final int indexNum;      //5000000 * 4
     private final String storePath;
     private final ArrayList<IndexFile> indexFileList = new ArrayList<IndexFile>();
     private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
@@ -106,7 +110,7 @@ public class IndexService {
         if (files != null) {
             List<IndexFile> fileList = new ArrayList<IndexFile>();
             for (int i = 0; i < (files.length - 1); i++) {
-                IndexFile f = (IndexFile) files[i];
+                IndexFile f = (IndexFile)files[i];
                 if (f.getEndPhyOffset() < offset) {
                     fileList.add(f);
                 } else {
@@ -196,14 +200,19 @@ public class IndexService {
         return topic + "#" + key;
     }
 
+    /**
+     * 只有在消息中指定了keys或者uniqueKey,才会构建索引
+     *
+     * @param req
+     */
     public void buildIndex(DispatchRequest req) {
         IndexFile indexFile = retryGetAndCreateIndexFile();
         if (indexFile != null) {
             long endPhyOffset = indexFile.getEndPhyOffset();
             DispatchRequest msg = req;
             String topic = msg.getTopic();
-            String keys = msg.getKeys();
-            if (msg.getCommitLogOffset() < endPhyOffset) {
+            String keys = msg.getKeys();  //默认值是""
+            if (msg.getCommitLogOffset() < endPhyOffset) {  //待构建消息的偏移量应大于索引文件最大物理偏移量
                 return;
             }
 
@@ -217,7 +226,7 @@ public class IndexService {
                     return;
             }
 
-            if (req.getUniqKey() != null) {
+            if (req.getUniqKey() != null) {   //若消息体中制定了uniqueKey属性
                 indexFile = putKey(indexFile, msg, buildKey(topic, req.getUniqKey()));
                 if (indexFile == null) {
                     log.error("putKey error commitlog {} uniqkey {}", req.getCommitLogOffset(), req.getUniqKey());
@@ -225,7 +234,7 @@ public class IndexService {
                 }
             }
 
-            if (keys != null && keys.length() > 0) {
+            if (keys != null && keys.length() > 0) {   //若消息中未指定keys及uniqueKey,则不会构建索引
                 String[] keyset = keys.split(MessageConst.KEY_SEPARATOR);
                 for (int i = 0; i < keyset.length; i++) {
                     String key = keyset[i];
@@ -243,6 +252,14 @@ public class IndexService {
         }
     }
 
+    /**
+     * 只有在消息中指定了keys或者uniqueKey,才会构建索引
+     *
+     * @param indexFile
+     * @param msg
+     * @param idxKey    topic#keys;topic#uniqueKey
+     * @return
+     */
     private IndexFile putKey(IndexFile indexFile, DispatchRequest msg, String idxKey) {
         for (boolean ok = indexFile.putKey(idxKey, msg.getCommitLogOffset(), msg.getStoreTimestamp()); !ok; ) {
             log.warn("Index file [" + indexFile.getFileName() + "] is full, trying to create another one");
@@ -268,8 +285,7 @@ public class IndexService {
 
         for (int times = 0; null == indexFile && times < MAX_TRY_IDX_CREATE; times++) {
             indexFile = this.getAndCreateLastIndexFile();
-            if (null != indexFile)
-                break;
+            if (null != indexFile) { break; }
 
             try {
                 log.info("Tried to create index file " + times + " times");
@@ -314,7 +330,7 @@ public class IndexService {
                 String fileName =
                     this.storePath + File.separator
                         + UtilAll.timeMillisToHumanString(System.currentTimeMillis());
-                indexFile =
+                indexFile =  //创建IndexFile,5,000,000个索引哈希插槽,20,000,000个索引数量,上个索引文件的CommitLog的Offset及最后更新时间
                     new IndexFile(fileName, this.hashSlotNum, this.indexNum, lastUpdateEndPhyOffset,
                         lastUpdateIndexTimestamp);
                 this.readWriteLock.writeLock().lock();
@@ -343,8 +359,7 @@ public class IndexService {
     }
 
     public void flush(final IndexFile f) {
-        if (null == f)
-            return;
+        if (null == f) { return; }
 
         long indexMsgTimestamp = 0;
 
