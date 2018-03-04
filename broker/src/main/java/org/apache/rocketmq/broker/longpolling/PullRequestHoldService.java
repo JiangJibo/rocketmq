@@ -165,9 +165,9 @@ public class PullRequestHoldService extends ServiceThread {
         ManyPullRequest mpr = this.pullRequestTable.get(key);
         if (mpr != null) {
             //
-            List<PullRequest> requestList = mpr.cloneListAndClear();
+            List<PullRequest> requestList = mpr.cloneListAndClear();   //当所有消费请求都被执行时,pullRequestTable里就会被清空
             if (requestList != null) {
-                List<PullRequest> replayList = new ArrayList<>(); // 不符合唤醒的请求数组
+                List<PullRequest> replayList = new ArrayList<>(); // 不符合唤醒的请求数组,当不为空时会被重新放回 pullRequestTable
 
                 for (PullRequest request : requestList) {
                     // 如果 maxOffset 过小，则重新读取一次。
@@ -177,7 +177,7 @@ public class PullRequestHoldService extends ServiceThread {
                     }
                     // 有新的匹配消息，唤醒请求，即再次拉取消息。
                     if (newestOffset > request.getPullFromThisOffset()) {
-                        if (this.messageFilter.isMessageMatched(request.getSubscriptionData(), tagsCode)) {
+                        if (this.messageFilter.isMessageMatched(request.getSubscriptionData(), tagsCode)) {  //是否匹配不看queueId
                             try {
                                 this.brokerController.getPullMessageProcessor().executeRequestWhenWakeup(request.getClientChannel(),
                                     request.getRequestCommand());
@@ -187,7 +187,7 @@ public class PullRequestHoldService extends ServiceThread {
                             continue;
                         }
                     }
-                    // 超过挂起时间，唤醒请求，即再次拉取消息。
+                    // 已经过了请求线程挂起时间，唤醒请求，即再次拉取消息。
                     if (System.currentTimeMillis() >= (request.getSuspendTimestamp() + request.getTimeoutMillis())) {
                         try {
                             this.brokerController.getPullMessageProcessor().executeRequestWhenWakeup(request.getClientChannel(),
