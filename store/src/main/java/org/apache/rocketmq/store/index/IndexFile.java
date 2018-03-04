@@ -99,8 +99,8 @@ public class IndexFile {
     public boolean putKey(final String key, final long phyOffset, final long storeTimestamp) {
         if (this.indexHeader.getIndexCount() < this.indexNum) {
             int keyHash = indexKeyHashMethod(key);   //对key取哈希值
-            int slotPos = keyHash % this.hashSlotNum;
-            int absSlotPos = IndexHeader.INDEX_HEADER_SIZE + slotPos * hashSlotSize;
+            int slotPos = keyHash % this.hashSlotNum;  //插槽排列序号
+            int absSlotPos = IndexHeader.INDEX_HEADER_SIZE + slotPos * hashSlotSize;  //哈希插槽绝对地址=头部(40byte)+插槽序号*插槽单位大小
 
             FileLock fileLock = null;
 
@@ -132,9 +132,9 @@ public class IndexFile {
                 this.mappedByteBuffer.putInt(absIndexPos, keyHash);   //4byte
                 this.mappedByteBuffer.putLong(absIndexPos + 4, phyOffset);  //4byte
                 this.mappedByteBuffer.putInt(absIndexPos + 4 + 8, (int)timeDiff);  //8byte
-                this.mappedByteBuffer.putInt(absIndexPos + 4 + 8 + 4, slotValue);  //4byte
+                this.mappedByteBuffer.putInt(absIndexPos + 4 + 8 + 4, slotValue);  //4byte在,若不为空,值是上一个相同key的索引顺序位置,这样查询时能够递归的按照此值获取指定key的所有索引信息
 
-                this.mappedByteBuffer.putInt(absSlotPos, this.indexHeader.getIndexCount());  //存储插槽>索引序号,查询是通过插槽找到索引位置
+                this.mappedByteBuffer.putInt(absSlotPos, this.indexHeader.getIndexCount());  //存储插槽>索引序号,查询是通过插槽找到索引位置,如果key相同,更新插槽的索引位置值
 
                 if (this.indexHeader.getIndexCount() <= 1) {
                     this.indexHeader.setBeginPhyOffset(phyOffset);
@@ -169,7 +169,9 @@ public class IndexFile {
     public int indexKeyHashMethod(final String key) {
         int keyHash = key.hashCode();
         int keyHashPositive = Math.abs(keyHash);
-        if (keyHashPositive < 0) { keyHashPositive = 0; }
+        if (keyHashPositive < 0) {
+            keyHashPositive = 0;
+        }
         return keyHashPositive;
     }
 

@@ -226,7 +226,7 @@ public class IndexService {
                     return;
             }
 
-            if (req.getUniqKey() != null) {   //若消息体中制定了uniqueKey属性
+            if (req.getUniqKey() != null) {   //若消息体中指定了uniqueKey属性
                 indexFile = putKey(indexFile, msg, buildKey(topic, req.getUniqKey()));
                 if (indexFile == null) {
                     log.error("putKey error commitlog {} uniqkey {}", req.getCommitLogOffset(), req.getUniqKey());
@@ -285,7 +285,9 @@ public class IndexService {
 
         for (int times = 0; null == indexFile && times < MAX_TRY_IDX_CREATE; times++) {
             indexFile = this.getAndCreateLastIndexFile();
-            if (null != indexFile) { break; }
+            if (null != indexFile) {
+                break;
+            }
 
             try {
                 log.info("Tried to create index file " + times + " times");
