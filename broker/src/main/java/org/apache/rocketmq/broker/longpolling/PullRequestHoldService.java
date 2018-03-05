@@ -48,8 +48,7 @@ public class PullRequestHoldService extends ServiceThread {
     /**
      * 拉取消息请求集合
      */
-    private ConcurrentHashMap<String/* topic@queueId */, ManyPullRequest> pullRequestTable =
-            new ConcurrentHashMap<>(1024);
+    private ConcurrentHashMap<String/* topic@queueId */, ManyPullRequest> pullRequestTable = new ConcurrentHashMap<>(1024);
 
     public PullRequestHoldService(final BrokerController brokerController) {
         this.brokerController = brokerController;
@@ -58,8 +57,8 @@ public class PullRequestHoldService extends ServiceThread {
     /**
      * 添加拉取消息挂起请求
      *
-     * @param topic 主题
-     * @param queueId 队列编号
+     * @param topic       主题
+     * @param queueId     队列编号
      * @param pullRequest 拉取消息请求
      */
     public void suspendPullRequest(final String topic, final int queueId, final PullRequest pullRequest) {
@@ -79,7 +78,7 @@ public class PullRequestHoldService extends ServiceThread {
     /**
      * 根据 主题 + 队列编号 创建唯一标识
      *
-     * @param topic 主题
+     * @param topic   主题
      * @param queueId 队列编号
      * @return key
      */
@@ -144,8 +143,8 @@ public class PullRequestHoldService extends ServiceThread {
     /**
      * 检查是否有需要通知的请求
      *
-     * @param topic 主题
-     * @param queueId 队列编号
+     * @param topic     主题
+     * @param queueId   队列编号
      * @param maxOffset 消费队列最大offset
      */
     public void notifyMessageArriving(final String topic, final int queueId, final long maxOffset) {
@@ -155,10 +154,10 @@ public class PullRequestHoldService extends ServiceThread {
     /**
      * 检查是否有需要通知的请求
      *
-     * @param topic 主题
-     * @param queueId 队列编号
+     * @param topic     主题
+     * @param queueId   队列编号
      * @param maxOffset 消费队列最大offset
-     * @param tagsCode 过滤tagsCode
+     * @param tagsCode  过滤tagsCode
      */
     public void notifyMessageArriving(final String topic, final int queueId, final long maxOffset, final Long tagsCode) {
         String key = this.buildKey(topic, queueId);
