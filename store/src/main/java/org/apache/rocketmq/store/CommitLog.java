@@ -798,10 +798,10 @@ public class CommitLog {
     }
 
     /**
-     * TODO
+     * 根据从ConsumeQueue里获取到的消息位置及大小,从MappeFile中获取相应的数据
      *
-     * @param offset
-     * @param size
+     * @param offset 消息在CommitLog中的全局Offset
+     * @param size   消息的字节长度
      * @return
      */
     public SelectMappedBufferResult getMessage(final long offset, final int size) {
@@ -815,7 +815,9 @@ public class CommitLog {
     }
 
     /**
-     * TODO
+     * 跳到当前Offset对应的MappedFile的下一个MappedFile的起始位置
+     * 比如当前Offset为1G+5000,
+     * offset + mappedFileSize - offset % mappedFileSize = 1G+5000+1G-5000/1G =2G
      *
      * @param offset
      * @return

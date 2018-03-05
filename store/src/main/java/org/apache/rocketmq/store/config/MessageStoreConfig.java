@@ -130,7 +130,7 @@ public class MessageStoreConfig {
     @ImportantField
     private int maxTransferCountOnMessageInDisk = 8;
     @ImportantField
-    private int accessMessageInMemoryMaxRatio = 40;
+    private int accessMessageInMemoryMaxRatio = 40;  //从内存中获取消息的最大比例,计算时会 40/100
     @ImportantField
     private boolean messageIndexEnable = true;
     private int maxHashSlotNum = 5000000;

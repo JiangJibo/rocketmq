@@ -29,6 +29,7 @@ import org.apache.rocketmq.remoting.exception.RemotingCommandException;
  * 拉取消息请求Header
  */
 public class PullMessageRequestHeader implements CommandCustomHeader {
+
     /**
      * 消费者分组
      */
@@ -45,7 +46,7 @@ public class PullMessageRequestHeader implements CommandCustomHeader {
     @CFNotNull
     private Integer queueId;
     /**
-     * 队列开始位置
+     * 消费队列里的消息序号,相当于第几条消息
      */
     @CFNotNull
     private Long queueOffset;

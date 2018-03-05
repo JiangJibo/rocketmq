@@ -57,7 +57,7 @@ public class MappedFile extends ReferenceResource {
     protected static final Logger log = LoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
     /**
-     * TODO
+     * 文件系统缓存里内存页的最小分配单元,4K
      */
     public static final int OS_PAGE_SIZE = 1024 * 4;
     /**
@@ -293,7 +293,6 @@ public class MappedFile extends ReferenceResource {
     }
 
     /**
-     *
      * @param data
      * @return
      */

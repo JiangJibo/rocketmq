@@ -27,15 +27,18 @@ import java.util.List;
  */
 public class GetMessageResult {
 
+    /**
+     * 每一个SelectMappedBufferResult代表着一条消息,按消息顺序排列
+     */
     private final List<SelectMappedBufferResult> messageMapedList =
-            new ArrayList<>(100);
+        new ArrayList<>(100);
 
     private final List<ByteBuffer> messageBufferList = new ArrayList<ByteBuffer>(100);
 
     private GetMessageStatus status;
-    private long nextBeginOffset;
-    private long minOffset;
-    private long maxOffset;
+    private long nextBeginOffset;  //下次拉取时从ConsumeQueue的开始单元序号
+    private long minOffset;  // ConsumeQueue里的最大单元序号
+    private long maxOffset;  // ConsumeQueue里的最小单元序号
 
     private int bufferTotalSize = 0;
 
@@ -90,7 +93,7 @@ public class GetMessageResult {
         this.messageMapedList.add(mapedBuffer);
         this.messageBufferList.add(mapedBuffer.getByteBuffer());
         this.bufferTotalSize += mapedBuffer.getSize();
-        this.msgCount4Commercial += (int) Math.ceil(
+        this.msgCount4Commercial += (int)Math.ceil(
             mapedBuffer.getSize() / BrokerStatsManager.SIZE_PER_COUNT);
     }
 
