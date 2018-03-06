@@ -17,7 +17,9 @@
 package org.apache.rocketmq.broker.processor;
 
 import io.netty.channel.ChannelHandlerContext;
+
 import java.util.List;
+
 import org.apache.rocketmq.broker.BrokerController;
 import org.apache.rocketmq.broker.client.ConsumerGroupInfo;
 import org.apache.rocketmq.common.constant.LoggerName;
@@ -38,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ConsumerManageProcessor implements NettyRequestProcessor {
+
     private static final Logger log = LoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
 
     private final BrokerController brokerController;
@@ -67,12 +70,20 @@ public class ConsumerManageProcessor implements NettyRequestProcessor {
         return false;
     }
 
+    /**
+     * 获取 消费者集群 + Topic 对应的 消费者编号数组
+     *
+     * @param ctx
+     * @param request
+     * @return
+     * @throws RemotingCommandException
+     */
     public RemotingCommand getConsumerListByGroup(ChannelHandlerContext ctx, RemotingCommand request)
         throws RemotingCommandException {
         final RemotingCommand response =
             RemotingCommand.createResponseCommand(GetConsumerListByGroupResponseHeader.class);
         final GetConsumerListByGroupRequestHeader requestHeader =
-            (GetConsumerListByGroupRequestHeader) request
+            (GetConsumerListByGroupRequestHeader)request
                 .decodeCommandCustomHeader(GetConsumerListByGroupRequestHeader.class);
 
         ConsumerGroupInfo consumerGroupInfo =
@@ -106,7 +117,7 @@ public class ConsumerManageProcessor implements NettyRequestProcessor {
         final RemotingCommand response =
             RemotingCommand.createResponseCommand(UpdateConsumerOffsetResponseHeader.class);
         final UpdateConsumerOffsetRequestHeader requestHeader =
-            (UpdateConsumerOffsetRequestHeader) request
+            (UpdateConsumerOffsetRequestHeader)request
                 .decodeCommandCustomHeader(UpdateConsumerOffsetRequestHeader.class);
         this.brokerController.getConsumerOffsetManager().commitOffset(RemotingHelper.parseChannelRemoteAddr(ctx.channel()), requestHeader.getConsumerGroup(),
             requestHeader.getTopic(), requestHeader.getQueueId(), requestHeader.getCommitOffset());
@@ -120,9 +131,9 @@ public class ConsumerManageProcessor implements NettyRequestProcessor {
         final RemotingCommand response =
             RemotingCommand.createResponseCommand(QueryConsumerOffsetResponseHeader.class);
         final QueryConsumerOffsetResponseHeader responseHeader =
-            (QueryConsumerOffsetResponseHeader) response.readCustomHeader();
+            (QueryConsumerOffsetResponseHeader)response.readCustomHeader();
         final QueryConsumerOffsetRequestHeader requestHeader =
-            (QueryConsumerOffsetRequestHeader) request
+            (QueryConsumerOffsetRequestHeader)request
                 .decodeCommandCustomHeader(QueryConsumerOffsetRequestHeader.class);
 
         long offset =

@@ -1121,7 +1121,7 @@ public class MQClientInstance {
     }
 
     /**
-     * 获取 Topic 对应的 Broker地址
+     * 随机获取 Topic 对应的 Broker Master地址
      *
      * @param topic Topic
      * @return Broker地址

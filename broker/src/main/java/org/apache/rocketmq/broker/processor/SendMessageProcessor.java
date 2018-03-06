@@ -86,7 +86,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
     }
 
     /**
-     * 消费者发回消息
+     * 消费者将消息发回给Broker,可以指定多久后重新消费该消息
      *
      * @param ctx     ctx
      * @param request 请求
@@ -138,7 +138,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             return response;
         }
 
-        // 计算retry Topic
+        // 计算retry Topic  "%RETRY%+consumeGroup"
         String newTopic = MixAll.getRetryTopic(requestHeader.getGroup());
 
         // 计算队列编号（独有）
@@ -185,12 +185,11 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
 
         // 处理 delayLevel（独有）。
         int delayLevel = requestHeader.getDelayLevel();
-        int maxReconsumeTimes = subscriptionGroupConfig.getRetryMaxTimes();
+        int maxReconsumeTimes = subscriptionGroupConfig.getRetryMaxTimes();  //16
         if (request.getVersion() >= MQVersion.Version.V3_4_9.ordinal()) {
             maxReconsumeTimes = requestHeader.getMaxReconsumeTimes();
         }
-        if (msgExt.getReconsumeTimes() >= maxReconsumeTimes//
-            || delayLevel < 0) { // 如果超过最大消费次数，则topic修改成"%DLQ%" + 分组名，即加入 死信队列(Dead Letter Queue)
+        if (msgExt.getReconsumeTimes() >= maxReconsumeTimes || delayLevel < 0) { // 如果超过最大消费次数，则topic修改成"%DLQ%" + 分组名，即加入 死信队列(Dead Letter Queue)
             newTopic = MixAll.getDLQTopic(requestHeader.getGroup());
             queueIdInt = Math.abs(this.random.nextInt() % 99999999) % DLQ_NUMS_PER_GROUP;
 
@@ -204,7 +203,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                 return response;
             }
         } else {
-            if (0 == delayLevel) {
+            if (0 == delayLevel) {   //延迟级别为0,增加3次消费次数
                 delayLevel = 3 + msgExt.getReconsumeTimes();
             }
             msgExt.setDelayTimeLevel(delayLevel);

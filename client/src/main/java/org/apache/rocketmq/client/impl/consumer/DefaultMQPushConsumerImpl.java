@@ -65,6 +65,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultMQPushConsumerImpl implements MQConsumerInner {
+
     /**
      * Delay some time when exception occur
      */
@@ -243,7 +244,8 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
 
         // 判断是否暂停中。
         if (this.isPause()) {
-            log.warn("consumer was paused, execute pull request later. instanceName={}, group={}", this.defaultMQPushConsumer.getInstanceName(), this.defaultMQPushConsumer.getConsumerGroup());
+            log.warn("consumer was paused, execute pull request later. instanceName={}, group={}", this.defaultMQPushConsumer.getInstanceName(),
+                this.defaultMQPushConsumer.getConsumerGroup());
             this.executePullRequestLater(pullRequest, PULL_TIME_DELAY_MILLS_WHEN_SUSPEND);
             return;
         }
@@ -279,7 +281,9 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                     log.info("the first time to pull message, so fix offset from broker. pullRequest: {} NewOffset: {} brokerBusy: {}",
                         pullRequest, offset, brokerBusy);
                     if (brokerBusy) {
-                        log.info("[NOTIFYME]the first time to pull message, but pull request offset larger than broker consume offset. pullRequest: {} NewOffset: {}",
+                        log.info(
+                            "[NOTIFYME]the first time to pull message, but pull request offset larger than broker consume offset. pullRequest: {} NewOffset: "
+                                + "{}",
                             pullRequest, offset);
                     }
 
@@ -556,7 +560,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
     /**
      * 发回消息
      *
-     * @param msg 消息
+     * @param msg        消息
      * @param delayLevel 延迟级别
      * @param brokerName brokerName
      * @throws RemotingException 当远程调用发生异常
@@ -644,6 +648,8 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
 
                 // 设置负载均衡器
                 this.rebalanceImpl.setConsumerGroup(this.defaultMQPushConsumer.getConsumerGroup());
+                //默认这是消费模式为集群模式,每条消息被同一组的消费者中的一个消费
+                //还可以设置为广播模式,每条消息被同一个组的所有消费者都消费一次
                 this.rebalanceImpl.setMessageModel(this.defaultMQPushConsumer.getMessageModel());
                 this.rebalanceImpl.setAllocateMessageQueueStrategy(this.defaultMQPushConsumer.getAllocateMessageQueueStrategy());
                 this.rebalanceImpl.setmQClientFactory(this.mQClientFactory);
@@ -674,10 +680,10 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 // TODO 待读：监听器
                 if (this.getMessageListenerInner() instanceof MessageListenerOrderly) {
                     this.consumeOrderly = true;
-                    this.consumeMessageService = new ConsumeMessageOrderlyService(this, (MessageListenerOrderly) this.getMessageListenerInner());
+                    this.consumeMessageService = new ConsumeMessageOrderlyService(this, (MessageListenerOrderly)this.getMessageListenerInner());
                 } else if (this.getMessageListenerInner() instanceof MessageListenerConcurrently) {
                     this.consumeOrderly = false;
-                    this.consumeMessageService = new ConsumeMessageConcurrentlyService(this, (MessageListenerConcurrently) this.getMessageListenerInner());
+                    this.consumeMessageService = new ConsumeMessageConcurrentlyService(this, (MessageListenerConcurrently)this.getMessageListenerInner());
                 }
                 this.consumeMessageService.start();
 
@@ -732,6 +738,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
      * - 轮询间隔：pullInterval 范围正常
      * - pullThresholdForQueue不能为空
      * - 拉取批量数量：pullBatchSize 范围正常
+     *
      * @throws MQClientException 当校验不符合规则时
      */
     private void checkConfig() throws MQClientException {
@@ -872,6 +879,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
     /**
      * 复制订阅关系
      * important！！！当集群消费时，加入当前消费分组重试消息的订阅
+     *
      * @throws MQClientException 当解析订阅数据失败时
      */
     private void copySubscription() throws MQClientException {
@@ -932,7 +940,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
     /**
      * 订阅 Topic
      *
-     * @param topic Topic
+     * @param topic         Topic
      * @param subExpression 订阅表达式
      * @throws MQClientException 当client发生异常
      */
@@ -1155,9 +1163,9 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         long computeAccTotal = this.computeAccumulationTotal();
         long adjustThreadPoolNumsThreshold = this.defaultMQPushConsumer.getAdjustThreadPoolNumsThreshold();
 
-        long incThreshold = (long) (adjustThreadPoolNumsThreshold * 1.0);
+        long incThreshold = (long)(adjustThreadPoolNumsThreshold * 1.0);
 
-        long decThreshold = (long) (adjustThreadPoolNumsThreshold * 0.8);
+        long decThreshold = (long)(adjustThreadPoolNumsThreshold * 0.8);
 
         if (computeAccTotal >= incThreshold) {
             this.consumeMessageService.incCorePoolSize();

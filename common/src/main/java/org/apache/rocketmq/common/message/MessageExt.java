@@ -31,6 +31,9 @@ public class MessageExt extends Message {
      */
     private int queueId;
 
+    /**
+     * 存储的消息总大小
+     */
     private int storeSize;
     /**
      * 队列offset
