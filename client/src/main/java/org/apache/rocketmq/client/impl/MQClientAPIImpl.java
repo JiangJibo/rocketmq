@@ -17,6 +17,7 @@
 package org.apache.rocketmq.client.impl;
 
 import org.apache.rocketmq.client.ClientConfig;
+import org.apache.rocketmq.client.consumer.MQConsumer;
 import org.apache.rocketmq.client.consumer.PullCallback;
 import org.apache.rocketmq.client.consumer.PullResult;
 import org.apache.rocketmq.client.consumer.PullStatus;
@@ -930,7 +931,12 @@ public class MQClientAPIImpl {
     }
 
     /**
+<<<<<<< Updated upstream
      * 因为业务原因将消息返回给Broker，可指定多久之后重新消费该消息
+=======
+     * 当消费者因业务原因消费消息失败时,可以主动调用{@link MQConsumer#sendMessageBack(MessageExt, int, String)}将消息发回给Broker
+     * Broker在这个方法内处理消费者返回的消息
+>>>>>>> Stashed changes
      *
      * @param addr                 Broker地址
      * @param msg                  消息

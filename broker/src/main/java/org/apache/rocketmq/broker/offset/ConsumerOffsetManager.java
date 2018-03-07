@@ -138,7 +138,7 @@ public class ConsumerOffsetManager extends ConfigManager {
      * 提交消费进度
      *
      * @param clientHost 提交client地址
-     * @param key 主题@消费分组
+     * @param key 主题@消费分组,topic@consumeGroup
      * @param queueId 队列编号
      * @param offset 进度（队列位置）
      */

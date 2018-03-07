@@ -347,12 +347,12 @@ public class PullMessageProcessor implements NettyRequestProcessor {
                         getMessageResult.getBufferTotalSize());
                     this.brokerController.getBrokerStatsManager().incBrokerGetNums(getMessageResult.getMessageCount());
                     // 读取消息
-                    if (this.brokerController.getBrokerConfig().isTransferMsgByHeap()) { // 内存中
+                    if (this.brokerController.getBrokerConfig().isTransferMsgByHeap()) { // 内存中,默认
                         final long beginTimeMills = this.brokerController.getMessageStore().now();
-
+                        //读取拉取到的消息,将其数据按顺序收集组合成一个字节数组
                         final byte[] r = this.readGetMessageResult(getMessageResult, requestHeader.getConsumerGroup(), requestHeader.getTopic(),
                             requestHeader.getQueueId());
-
+                        //更新拉取消息的次数及总的拉取延迟
                         this.brokerController.getBrokerStatsManager().incGroupGetLatency(requestHeader.getConsumerGroup(),
                             requestHeader.getTopic(), requestHeader.getQueueId(),
                             (int)(this.brokerController.getMessageStore().now() - beginTimeMills));
@@ -397,7 +397,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
 
                 case ResponseCode.PULL_RETRY_IMMEDIATELY:
                     break;
-                case ResponseCode.PULL_OFFSET_MOVED:
+                case ResponseCode.PULL_OFFSET_MOVED:  //OFFSET不存在,可能太小,或者大于maxOffset,或者相应的Message不存在了
                     if (this.brokerController.getMessageStoreConfig().getBrokerRole() != BrokerRole.SLAVE
                         || this.brokerController.getMessageStoreConfig().isOffsetCheckInSlave()) { // TODO 待博客补充
                         MessageQueue mq = new MessageQueue();
@@ -432,11 +432,11 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             response.setRemark("store getMessage return null");
         }
 
-        // 请求要求持久化进度 && broker非主，进行持久化进度。
+        // 允许broker挂起 && 消费者提交了消费进度 && 当前Broker为Master。
         boolean storeOffsetEnable = brokerAllowSuspend;
         storeOffsetEnable = storeOffsetEnable && hasCommitOffsetFlag;
         storeOffsetEnable = storeOffsetEnable && this.brokerController.getMessageStoreConfig().getBrokerRole() != BrokerRole.SLAVE;
-        if (storeOffsetEnable) {
+        if (storeOffsetEnable) {  //是否可进行消费进度的持久化
             this.brokerController.getConsumerOffsetManager().commitOffset(RemotingHelper.parseChannelRemoteAddr(channel),
                 requestHeader.getConsumerGroup(), requestHeader.getTopic(), requestHeader.getQueueId(), requestHeader.getCommitOffset());
         }
@@ -458,6 +458,15 @@ public class PullMessageProcessor implements NettyRequestProcessor {
         }
     }
 
+    /**
+     * 读取拉取到的消息,将其数据按顺序收集组合成一个字节数组
+     *
+     * @param getMessageResult
+     * @param group
+     * @param topic
+     * @param queueId
+     * @return
+     */
     private byte[] readGetMessageResult(final GetMessageResult getMessageResult, final String group, final String topic, final int queueId) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(getMessageResult.getBufferTotalSize());
 

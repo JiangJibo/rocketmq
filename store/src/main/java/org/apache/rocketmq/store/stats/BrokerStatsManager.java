@@ -19,6 +19,7 @@ package org.apache.rocketmq.store.stats;
 import java.util.HashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+
 import org.apache.rocketmq.common.ThreadFactoryImpl;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.common.stats.MomentStatsItemSet;
@@ -146,6 +147,14 @@ public class BrokerStatsManager {
         this.statsTable.get(GROUP_GET_SIZE).addValue(statsKey, incValue, 1);
     }
 
+    /**
+     * 更新拉取消息的次数及总的拉取延迟
+     *
+     * @param group
+     * @param topic
+     * @param queueId
+     * @param incValue
+     */
     public void incGroupGetLatency(final String group, final String topic, final int queueId, final int incValue) {
         final String statsKey = String.format("%d@%s@%s", queueId, topic, group);
         this.statsTable.get(GROUP_GET_LATENCY).addValue(statsKey, incValue, 1);
@@ -180,7 +189,7 @@ public class BrokerStatsManager {
     }
 
     public void incCommercialValue(final String key, final String owner, final String group,
-        final String topic, final String type, final int incValue) {
+                                   final String topic, final String type, final int incValue) {
         final String statsKey = buildCommercialStatsKey(owner, topic, group, type);
         this.statsTable.get(key).addValue(statsKey, incValue, 1);
     }
