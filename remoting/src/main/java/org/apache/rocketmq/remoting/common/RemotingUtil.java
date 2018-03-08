@@ -19,6 +19,7 @@ package org.apache.rocketmq.remoting.common;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.Inet6Address;
@@ -33,10 +34,12 @@ import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.ArrayList;
 import java.util.Enumeration;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class RemotingUtil {
+
     public static final String OS_NAME = System.getProperty("os.name");
 
     private static final Logger log = LoggerFactory.getLogger(RemotingHelper.ROCKETMQ_REMOTING);
@@ -67,7 +70,7 @@ public class RemotingUtil {
                     try {
                         final Method method = providerClazz.getMethod("provider");
                         if (method != null) {
-                            final SelectorProvider selectorProvider = (SelectorProvider) method.invoke(null);
+                            final SelectorProvider selectorProvider = (SelectorProvider)method.invoke(null);
                             if (selectorProvider != null) {
                                 result = selectorProvider.openSelector();
                             }
@@ -155,7 +158,7 @@ public class RemotingUtil {
 
     public static String socketAddress2String(final SocketAddress addr) {
         StringBuilder sb = new StringBuilder();
-        InetSocketAddress inetSocketAddress = (InetSocketAddress) addr;
+        InetSocketAddress inetSocketAddress = (InetSocketAddress)addr;
         sb.append(inetSocketAddress.getAddress().getHostAddress());
         sb.append(":");
         sb.append(inetSocketAddress.getPort());
@@ -191,6 +194,11 @@ public class RemotingUtil {
         return null;
     }
 
+    /**
+     * 关闭连接
+     *
+     * @param channel
+     */
     public static void closeChannel(Channel channel) {
         final String addrRemote = RemotingHelper.parseChannelRemoteAddr(channel);
         channel.close().addListener(new ChannelFutureListener() {

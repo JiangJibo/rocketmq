@@ -37,6 +37,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class NamesrvController {
+
     private static final Logger log = LoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
 
     private final NamesrvConfig namesrvConfig;
@@ -70,6 +71,9 @@ public class NamesrvController {
         this.configuration.setStorePathFromConfig(this.namesrvConfig, "configStorePath");
     }
 
+    /**
+     * @return
+     */
     public boolean initialize() {
 
         this.kvConfigManager.load();
@@ -81,6 +85,7 @@ public class NamesrvController {
 
         this.registerProcessor();
 
+        //启动内部扫描失效Broker的定时任务,5S后执行第一次,每次间隔10S
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -89,6 +94,7 @@ public class NamesrvController {
             }
         }, 5, 10, TimeUnit.SECONDS);
 
+        //定期打印配置信息,每10分钟一次
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
