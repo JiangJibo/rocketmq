@@ -90,7 +90,7 @@ public class MQClientInstance {
     private final Lock lockNamesrv = new ReentrantLock();
     private final Lock lockHeartbeat = new ReentrantLock();
     /**
-     * Broker名字 和 Broker地址相关 Map
+     * Broker名字 和 Broker地址相关 Map,定期(30S)移除关闭了的 broker address
      */
     private final ConcurrentHashMap<String/* Broker Name */, HashMap<Long/* brokerId */, String/* address */>> brokerAddrTable =
         new ConcurrentHashMap<>();
@@ -514,6 +514,11 @@ public class MQClientInstance {
         return false;
     }
 
+    /**
+     * 向所有Broker发送心跳,被Namesrv关闭连接的不在其中
+     * 生产者只向Master发送心跳,因为只有Master才能写入数据
+     * 消费者向Master和Slave都发送心跳
+     */
     private void sendHeartbeatToAllBroker() {
         final HeartbeatData heartbeatData = this.prepareHeartbeatData();
         final boolean producerEmpty = heartbeatData.getProducerDataSet().isEmpty();
@@ -534,8 +539,10 @@ public class MQClientInstance {
                     Long id = entry1.getKey();
                     String addr = entry1.getValue();
                     if (addr != null) {
-                        if (consumerEmpty) {
-                            if (id != MixAll.MASTER_ID) { continue; }
+                        if (consumerEmpty) {  //没有消费者,当前为纯生产者客户端
+                            if (id != MixAll.MASTER_ID) {   //生产者只向Master发送心跳
+                                continue;
+                            }
                         }
 
                         try {
@@ -677,6 +684,13 @@ public class MQClientInstance {
         return false;
     }
 
+    /**
+     * 封装Client要发送的心跳数据
+     * 生产者仅需要groupName
+     * 消费者需要groupName,消费模式(集群,广播),获取模式(pull,push),consumeFromWhere,SubscriptionData
+     *
+     * @return
+     */
     private HeartbeatData prepareHeartbeatData() {
         HeartbeatData heartbeatData = new HeartbeatData();
 
