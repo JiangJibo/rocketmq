@@ -176,7 +176,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
      * 校验producer配置
      * 0. group不能为空
      * 1. group格式是否正确，A-Za-z0-9
-     * 2. group不能等于MixAll.DEFAULT_PRODUCER_GROUP TODO 疑问：为什么不能等于，有什么特殊设定么？
+     * 2. group不能等于MixAll.DEFAULT_PRODUCER_GROUP
      *
      * @throws MQClientException 校验异常
      */

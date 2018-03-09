@@ -71,7 +71,7 @@ public class DefaultRequestProcessor implements NettyRequestProcessor {
             case RequestCode.DELETE_KV_CONFIG:
                 return this.deleteKVConfig(ctx, request);
 
-            case RequestCode.REGISTER_BROKER: // 注册Broker
+            case RequestCode.REGISTER_BROKER: // Broker发送心跳,实际就是注册Broker,更新BrokerLiveInfo,若配置变化同步
                 Version brokerVersion = MQVersion.value2Version(request.getVersion());
                 if (brokerVersion.ordinal() >= MQVersion.Version.V3_0_11.ordinal()) {
                     return this.registerBrokerWithFilterServer(ctx, request);
@@ -174,6 +174,7 @@ public class DefaultRequestProcessor implements NettyRequestProcessor {
 
     /**
      * 注册带filtersrv的broker
+     * Broker每次发送心跳也就是注册Broker
      *
      * @param ctx     ctx
      * @param request 注册请求

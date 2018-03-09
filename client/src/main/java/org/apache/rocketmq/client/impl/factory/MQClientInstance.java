@@ -171,7 +171,7 @@ public class MQClientInstance {
     }
 
     /**
-     * 将 Topic路由数据 转换成 Topic发布信息
+     * 将 Topic路由数据 转换成 Topic发布信息，过滤Master挂了的Broker
      * 顺序消息
      * 非顺序消息
      *
@@ -211,7 +211,7 @@ public class MQClientInstance {
                         continue;
                     }
 
-                    if (!brokerData.getBrokerAddrs().containsKey(MixAll.MASTER_ID)) { // 若BrokerData不包含Master节点地址，不算一个好的Broker,不处理队列信息
+                    if (!brokerData.getBrokerAddrs().containsKey(MixAll.MASTER_ID)) { // 若BrokerData不包含Master节点地址，可能Master已经挂了，所以不处理消息
                         continue;
                     }
 
@@ -247,7 +247,6 @@ public class MQClientInstance {
                 }
             }
         }
-
         return mqList;
     }
 
@@ -287,7 +286,7 @@ public class MQClientInstance {
     }
 
     private void startScheduledTask() {
-        if (null == this.clientConfig.getNamesrvAddr()) { // TODO 待读：获取namesrv，从url
+        if (null == this.clientConfig.getNamesrvAddr()) { // 若未配置Namesrv,每两分钟提取一次
             this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
                 @Override
@@ -314,7 +313,7 @@ public class MQClientInstance {
             }
         }, 10, this.clientConfig.getPollNameServerInteval(), TimeUnit.MILLISECONDS);
 
-        // 定时同步消费进度
+        // 定时清空下线的Broker(Master或Slave)，同步消费进度
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -397,7 +396,7 @@ public class MQClientInstance {
     }
 
     /**
-     * Remove offline broker
+     * 将被关闭连接的Broker从{@link #brokerAddrTable}移除
      */
     private void cleanOfflineBroker() {
         try {
@@ -418,7 +417,7 @@ public class MQClientInstance {
                         while (it.hasNext()) {
                             Entry<Long, String> ee = it.next();
                             String addr = ee.getValue();
-                            if (!this.isBrokerAddrExistInTopicRouteTable(addr)) {
+                            if (!this.isBrokerAddrExistInTopicRouteTable(addr)) {  //指定的Broker不在TopicRouteData里了
                                 it.remove();
                                 log.info("the broker addr[{} {}] is offline, remove it", brokerName, addr);
                             }
@@ -631,12 +630,12 @@ public class MQClientInstance {
                             // 克隆对象的原因：topicRouteData会被设置到下面的publishInfo/subscribeInfo
                             TopicRouteData cloneTopicRouteData = topicRouteData.cloneTopicRouteData();
 
-                            // 更新 Broker 地址相关信息
+                            // 更新 Broker 地址相关信息,当某个Broker心跳超时后,会被从addrs从移除
                             for (BrokerData bd : topicRouteData.getBrokerDatas()) {
                                 this.brokerAddrTable.put(bd.getBrokerName(), bd.getBrokerAddrs());
                             }
 
-                            // 更新生产者里的TopicPublishInfo
+                            // 更新生产者里的TopicPublishInfo,  过滤掉那些Master挂了的Broker
                             TopicPublishInfo publishInfo = topicRouteData2TopicPublishInfo(topic, topicRouteData);
                             publishInfo.setHaveTopicRouterInfo(true);
                             for (Entry<String, MQProducerInner> entry : this.producerTable.entrySet()) {
@@ -646,7 +645,7 @@ public class MQClientInstance {
                                 }
                             }
 
-                            // 更新订阅者(消费者)里的队列信息
+                            // 更新订阅者(消费者)里的队列信息,  即使Broker的Master挂了，还是可以从slave读
                             Set<MessageQueue> subscribeInfo = topicRouteData2TopicSubscribeInfo(topic, topicRouteData);
                             for (Entry<String, MQConsumerInner> entry : this.consumerTable.entrySet()) {
                                 MQConsumerInner impl = entry.getValue();
