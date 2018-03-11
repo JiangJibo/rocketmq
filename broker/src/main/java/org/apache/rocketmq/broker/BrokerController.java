@@ -173,10 +173,10 @@ public class BrokerController {
     public boolean initialize() throws CloneNotSupportedException {
         boolean result = true;
 
-        result = result && this.topicConfigManager.load();
+        result = result && this.topicConfigManager.load();  //加载 topics.json
 
-        result = result && this.consumerOffsetManager.load();
-        result = result && this.subscriptionGroupManager.load();
+        result = result && this.consumerOffsetManager.load();  //加载 consumerOffset.json
+        result = result && this.subscriptionGroupManager.load();  //加载 subscriptionGroup.json
 
         if (result) {
             try {

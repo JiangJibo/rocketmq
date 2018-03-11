@@ -381,7 +381,7 @@ public abstract class RebalanceImpl {
 
         // 移除 在processQueueTable && 不存在于 mqSet 里的消息队列
         Iterator<Entry<MessageQueue, ProcessQueue>> it = this.processQueueTable.entrySet().iterator();
-        while (it.hasNext()) { // TODO 待读：
+        while (it.hasNext()) {
             Entry<MessageQueue, ProcessQueue> next = it.next();
             MessageQueue mq = next.getKey();
             ProcessQueue pq = next.getValue();

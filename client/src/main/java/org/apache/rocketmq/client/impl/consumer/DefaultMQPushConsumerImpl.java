@@ -635,7 +635,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 // 检查配置
                 this.checkConfig();
 
-                // 复制订阅数据
+                // Rebalance负载均衡 复制订阅数据
                 this.copySubscription();
 
                 // 设置instanceName
@@ -655,12 +655,10 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 this.rebalanceImpl.setmQClientFactory(this.mQClientFactory);
 
                 // 拉取API封装
-                this.pullAPIWrapper = new PullAPIWrapper(
-                    mQClientFactory,
-                    this.defaultMQPushConsumer.getConsumerGroup(), isUnitMode());
+                this.pullAPIWrapper = new PullAPIWrapper(mQClientFactory, this.defaultMQPushConsumer.getConsumerGroup(), isUnitMode());
                 this.pullAPIWrapper.registerFilterMessageHook(filterMessageHookList);
 
-                // TODO 待读：store
+                //生成消费进度处理器,集群模式下消费进度保存在Broker上，因为同一组内的消费者要共享进度;广播模式下进度保存在消费者端
                 if (this.defaultMQPushConsumer.getOffsetStore() != null) {
                     this.offsetStore = this.defaultMQPushConsumer.getOffsetStore();
                 } else {
@@ -675,9 +673,9 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                             break;
                     }
                 }
-                this.offsetStore.load();
+                this.offsetStore.load();   //若是广播模式,加载本地的消费进度文件
 
-                // TODO 待读：监听器
+                // 根据监听室是顺序模式还是并发模式来生成相应的ConsumerService
                 if (this.getMessageListenerInner() instanceof MessageListenerOrderly) {
                     this.consumeOrderly = true;
                     this.consumeMessageService = new ConsumeMessageOrderlyService(this, (MessageListenerOrderly)this.getMessageListenerInner());
@@ -713,13 +711,13 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 break;
         }
 
-        // 更新 Topic路由信息
+        //  更新 Topic路由信息   （在Consumer start时马上调用，之后每隔一段时间调用一次）
         this.updateTopicSubscribeInfoWhenSubscriptionChanged();
 
-        // 通过心跳同步Consumer信息
+        // 通过心跳同步Consumer信息   （在Consumer start时马上调用，之后每隔一段时间调用一次）
         this.mQClientFactory.sendHeartbeatToAllBrokerWithLock();
 
-        // 重新均衡
+        // 唤醒MessageQueue均衡服务
         this.mQClientFactory.rebalanceImmediately();
     }
 
@@ -903,7 +901,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 case BROADCASTING:
                     break;
                 case CLUSTERING:
-                    final String retryTopic = MixAll.getRetryTopic(this.defaultMQPushConsumer.getConsumerGroup());
+                    final String retryTopic = MixAll.getRetryTopic(this.defaultMQPushConsumer.getConsumerGroup());  //重试Topic：%RETRY% + topic
                     SubscriptionData subscriptionData = FilterAPI.buildSubscriptionData(this.defaultMQPushConsumer.getConsumerGroup(), //
                         retryTopic, SubscriptionData.SUB_ALL);
                     this.rebalanceImpl.getSubscriptionInner().put(retryTopic, subscriptionData);

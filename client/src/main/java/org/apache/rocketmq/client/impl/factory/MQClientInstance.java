@@ -171,7 +171,7 @@ public class MQClientInstance {
     }
 
     /**
-     * 将 Topic路由数据 转换成 Topic发布信息，过滤Master挂了的Broker
+     * 将 Topic路由数据 转换成 Topic发布信息，过滤Master挂了的Broker以及Slave的MessageQueue
      * 顺序消息
      * 非顺序消息
      *
@@ -198,7 +198,7 @@ public class MQClientInstance {
             List<QueueData> qds = route.getQueueDatas();
             Collections.sort(qds);
             for (QueueData qd : qds) {  //为每个QueueData找到所属的BrokerData
-                if (PermName.isWriteable(qd.getPerm())) {  //队列是否是写入队列
+                if (PermName.isWriteable(qd.getPerm())) {  //队列是否是写入队列,过滤Slave的MessageQueue
                     BrokerData brokerData = null;
                     for (BrokerData bd : route.getBrokerDatas()) { //找到当前QueueData所属的BrokerData
                         if (bd.getBrokerName().equals(qd.getBrokerName())) {
@@ -300,7 +300,7 @@ public class MQClientInstance {
             }, 1000 * 10, 1000 * 60 * 2, TimeUnit.MILLISECONDS);
         }
 
-        // 定时拉取 Topic路由配置
+        // 每隔30S定时拉取 Topic路由配置
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -313,7 +313,7 @@ public class MQClientInstance {
             }
         }, 10, this.clientConfig.getPollNameServerInteval(), TimeUnit.MILLISECONDS);
 
-        // 定时清空下线的Broker(Master或Slave)，同步消费进度
+        // 定时清空下线的Broker(Master或Slave)，向Broker发送心跳,传递生产者或订阅信息
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -327,10 +327,11 @@ public class MQClientInstance {
             }
         }, 1000, this.clientConfig.getHeartbeatBrokerInterval(), TimeUnit.MILLISECONDS);
 
+        //每隔5S持久化消费进度
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
-            public void run() { // TODO 待读：ALL
+            public void run() {
                 try {
                     MQClientInstance.this.persistAllConsumerOffset();
                 } catch (Exception e) {
@@ -573,7 +574,7 @@ public class MQClientInstance {
         while (it.hasNext()) {
             Entry<String, MQConsumerInner> next = it.next();
             MQConsumerInner consumer = next.getValue();
-            if (ConsumeType.CONSUME_PASSIVELY == consumer.consumeType()) {
+            if (ConsumeType.CONSUME_PASSIVELY == consumer.consumeType()) {  //PUSH模式
                 Set<SubscriptionData> subscriptions = consumer.subscriptions();
                 for (SubscriptionData sub : subscriptions) {
                     if (sub.isClassFilterMode() && sub.getFilterClassSource() != null) {
@@ -612,8 +613,7 @@ public class MQClientInstance {
                     // 目的：用于新的topic，发送消息时，未创建路由信息，先使用createTopic的路由信息，等到发送到broker时，进行自动创建。
                     // @see TopicConfigManager
                     if (isDefault && defaultMQProducer != null) {
-                        topicRouteData = this.mQClientAPIImpl.getDefaultTopicRouteInfoFromNameServer(defaultMQProducer.getCreateTopicKey(),
-                            1000 * 3);
+                        topicRouteData = this.mQClientAPIImpl.getDefaultTopicRouteInfoFromNameServer(defaultMQProducer.getCreateTopicKey(), 1000 * 3);
                         if (topicRouteData != null) {
                             for (QueueData data : topicRouteData.getQueueDatas()) {
                                 int queueNums = Math.min(defaultMQProducer.getDefaultTopicQueueNums(), data.getReadQueueNums());
@@ -1025,6 +1025,13 @@ public class MQClientInstance {
         return this.consumerTable.get(group);
     }
 
+    /**
+     * 找到指定Broker的Master,也可能Master宕机了,则找到个Slave
+     * 优先用Master
+     *
+     * @param brokerName
+     * @return
+     */
     public FindBrokerResult findBrokerAddressInAdmin(final String brokerName) {
         String brokerAddr = null;
         boolean slave = false;
@@ -1036,7 +1043,7 @@ public class MQClientInstance {
             for (Map.Entry<Long, String> entry : map.entrySet()) {
                 Long id = entry.getKey();
                 brokerAddr = entry.getValue();
-                if (brokerAddr != null) {
+                if (brokerAddr != null) {  //只找第一个Entry,Long类型的Key, 0的序号比1靠前  若Master存在，则必定排第一位
                     found = true;
                     if (MixAll.MASTER_ID == id) {
                         slave = false;
@@ -1109,7 +1116,7 @@ public class MQClientInstance {
     }
 
     /**
-     * 获取 消费者集群 + Topic 对应的 消费者编号数组
+     * 从Broker上获取指定Topic的消费者集群编号
      *
      * @param topic Topic
      * @param group 消费者集群

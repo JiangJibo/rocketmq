@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * Remote storage implementation
  */
 public class RemoteBrokerOffsetStore implements OffsetStore {
+
     private final static Logger log = ClientLogger.getLog();
     private final MQClientInstance mQClientFactory;
     /**
@@ -123,8 +124,7 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
      */
     @Override
     public void persistAll(Set<MessageQueue> mqs) {
-        if (null == mqs || mqs.isEmpty())
-            return;
+        if (null == mqs || mqs.isEmpty()) { return; }
 
         // 持久化消息队列
         final HashSet<MessageQueue> unusedMQ = new HashSet<>();
@@ -245,6 +245,16 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
         }
     }
 
+    /**
+     * 从Broker上获取指定MessageQueue的消费Offset
+     *
+     * @param mq
+     * @return
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     * @throws MQClientException
+     */
     private long fetchConsumeOffsetFromBroker(MessageQueue mq) throws RemotingException, MQBrokerException,
         InterruptedException, MQClientException {
         FindBrokerResult findBrokerResult = this.mQClientFactory.findBrokerAddressInAdmin(mq.getBrokerName());

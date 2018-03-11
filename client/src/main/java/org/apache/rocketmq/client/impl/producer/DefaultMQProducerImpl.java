@@ -473,6 +473,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
 
     /**
      * 根据 TopicPublishInfo 和 brokerName 获取消息队列
+     * 会尽量选择上次尝试的Broker
      *
      * @param tpInfo         消息发布信息
      * @param lastBrokerName brokerName
@@ -532,14 +533,14 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             MessageQueue mq = null; // 最后选择消息要发送到的队列
             Exception exception = null;
             SendResult sendResult = null; // 最后一次发送结果
-            int timesTotal = communicationMode == CommunicationMode.SYNC ? 1 + this.defaultMQProducer.getRetryTimesWhenSendFailed() : 1; // 同步多次调用
+            int timesTotal = communicationMode == CommunicationMode.SYNC ? 1 + this.defaultMQProducer.getRetryTimesWhenSendFailed() : 1; // 同步3次调用
             int times = 0; // 第几次发送
             String[] brokersSent = new String[timesTotal]; // 存储每次发送消息选择的broker名
             // 循环调用发送消息，直到成功
             for (; times < timesTotal; times++) {
                 String lastBrokerName = null == mq ? null : mq.getBrokerName();
                 @SuppressWarnings("SpellCheckingInspection")
-                MessageQueue tmpmq = this.selectOneMessageQueue(topicPublishInfo, lastBrokerName); // 选择消息要发送到的队列
+                MessageQueue tmpmq = this.selectOneMessageQueue(topicPublishInfo, lastBrokerName); // 选择消息要发送到的队列,默认策略下，下次发送选择其他的Broker
                 if (tmpmq != null) {
                     mq = tmpmq;
                     brokersSent[times] = mq.getBrokerName();
@@ -548,7 +549,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                         // 调用发送消息核心方法
                         sendResult = this.sendKernelImpl(msg, mq, communicationMode, sendCallback, topicPublishInfo, timeout);
                         endTimestamp = System.currentTimeMillis();
-                        // 更新Broker可用性信息
+                        // 更新Broker可用性信息,发送时间超过550ms后会有不可用时长，至少30S
                         this.updateFaultItem(mq.getBrokerName(), endTimestamp - beginTimestampPrev, false);
                         switch (communicationMode) {
                             case ASYNC:
@@ -565,7 +566,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                             default:
                                 break;
                         }
-                    } catch (RemotingException e) { // 打印异常，更新Broker可用性信息，更新继续循环
+                    } catch (RemotingException e) { // 打印异常，更新Broker可用性信息,停用10M，更新继续循环
                         endTimestamp = System.currentTimeMillis();
                         this.updateFaultItem(mq.getBrokerName(), endTimestamp - beginTimestampPrev, true);
                         log.warn(String
@@ -574,7 +575,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                         log.warn(msg.toString());
                         exception = e;
                         continue;
-                    } catch (MQClientException e) { // 打印异常，更新Broker可用性信息，继续循环
+                    } catch (MQClientException e) { // 打印异常，更新Broker可用性信息,停用10M，继续循环
                         endTimestamp = System.currentTimeMillis();
                         this.updateFaultItem(mq.getBrokerName(), endTimestamp - beginTimestampPrev, true);
                         log.warn(String
@@ -721,7 +722,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 // 事务
                 final String tranMsg = msg.getProperty(MessageConst.PROPERTY_TRANSACTION_PREPARED);
                 if (tranMsg != null && Boolean.parseBoolean(tranMsg)) {
-                    sysFlag |= MessageSysFlag.TRANSACTION_PREPARED_TYPE;
+                    sysFlag |= MessageSysFlag.TRANSACTION_PREPARED_TYPE;   //5
                 }
                 // hook：发送消息校验
                 if (hasCheckForbiddenHook()) {

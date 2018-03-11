@@ -28,6 +28,7 @@ import java.util.List;
  * Topic发布信息
  */
 public class TopicPublishInfo {
+
     /**
      * 是否顺序消息
      */
@@ -95,6 +96,12 @@ public class TopicPublishInfo {
         this.haveTopicRouterInfo = haveTopicRouterInfo;
     }
 
+    /**
+     * 默认策略下的MessageQueue选择
+     *
+     * @param lastBrokerName
+     * @return
+     */
     public MessageQueue selectOneMessageQueue(final String lastBrokerName) {
         if (lastBrokerName == null) {
             return selectOneMessageQueue();
@@ -102,8 +109,7 @@ public class TopicPublishInfo {
             int index = this.sendWhichQueue.getAndIncrement();
             for (int i = 0; i < this.messageQueueList.size(); i++) {
                 int pos = Math.abs(index++) % this.messageQueueList.size();
-                if (pos < 0)
-                    pos = 0;
+                if (pos < 0) { pos = 0; }
                 MessageQueue mq = this.messageQueueList.get(pos);
                 if (!mq.getBrokerName().equals(lastBrokerName)) {
                     return mq;
@@ -113,11 +119,15 @@ public class TopicPublishInfo {
         }
     }
 
+    /**
+     * 直接选择上次发送队列的下一位
+     *
+     * @return
+     */
     public MessageQueue selectOneMessageQueue() {
         int index = this.sendWhichQueue.getAndIncrement();
         int pos = Math.abs(index) % this.messageQueueList.size();
-        if (pos < 0)
-            pos = 0;
+        if (pos < 0) { pos = 0; }
         return this.messageQueueList.get(pos);
     }
 

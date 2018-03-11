@@ -40,7 +40,7 @@ public class ThreadLocalIndex {
     public int getAndIncrement() {
         Integer index = this.threadLocalIndex.get();
         if (null == index) {
-            index = Math.abs(random.nextInt()); // TODO 疑问：为啥要随机呢？
+            index = Math.abs(random.nextInt()); // 发送者线程第一次发送，随机生成一个Index
             if (index < 0)
                 index = 0;
             this.threadLocalIndex.set(index);

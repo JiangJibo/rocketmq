@@ -36,11 +36,11 @@ import java.util.List;
  * 代码块 (mod > 0 && index < mod) 判断即在处理相除有余数的情况。
  */
 public class AllocateMessageQueueAveragely implements AllocateMessageQueueStrategy {
+
     private final Logger log = ClientLogger.getLog();
 
     @Override
-    public List<MessageQueue> allocate(String consumerGroup, String currentCID, List<MessageQueue> mqAll,
-        List<String> cidAll) {
+    public List<MessageQueue> allocate(String consumerGroup, String currentCID, List<MessageQueue> mqAll, List<String> cidAll) {
         // 校验参数是否正确
         if (currentCID == null || currentCID.length() < 1) {
             throw new IllegalArgumentException("currentCID is empty");
@@ -63,8 +63,14 @@ public class AllocateMessageQueueAveragely implements AllocateMessageQueueStrate
         // 平均分配
         int index = cidAll.indexOf(currentCID); // 第几个consumer。
         int mod = mqAll.size() % cidAll.size(); // 余数，即多少消息队列无法平均分配。
+
+        //队列总数 <= 消费者总数时，分配当前消费者1个队列
+        //不能均分 &&  当前消费者序号 < 余下的队列数 ，分配当前消费者 mqAll / cidAll +1 个队列
+        //不能均分 &&  当前消费者序号 < 余下的队列数 ,分配当前消费者 mqAll / cidAll 个队列
         int averageSize = mqAll.size() <= cidAll.size() ? 1 : (mod > 0 && index < mod ? mqAll.size() / cidAll.size() + 1 : mqAll.size() / cidAll.size());
-        int startIndex = (mod > 0 && index < mod) ? index * averageSize : index * averageSize + mod; // 有余数的情况下，[0, mod) 平分余数，即每consumer多分配一个节点；第index开始，跳过前mod余数。
+
+        int startIndex = (mod > 0 && index < mod) ? index * averageSize
+            : index * averageSize + mod; // 有余数的情况下，[0, mod) 平分余数，即每consumer多分配一个节点；第index开始，跳过前mod余数。
         int range = Math.min(averageSize, mqAll.size() - startIndex); // 分配队列数量。之所以要Math.min()的原因是，mqAll.size() <= cidAll.size()，部分consumer分配不到消费队列。
         for (int i = 0; i < range; i++) {
             result.add(mqAll.get((startIndex + i) % mqAll.size()));
