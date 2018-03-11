@@ -434,7 +434,7 @@ public abstract class RebalanceImpl {
                         log.info("doRebalance, {}, add a new mq, {}", consumerGroup, mq);
                         PullRequest pullRequest = new PullRequest();
                         pullRequest.setConsumerGroup(consumerGroup);
-                        pullRequest.setNextOffset(nextOffset);
+                        pullRequest.setNextOffset(nextOffset);  //设置下次拉取时的起始位置
                         pullRequest.setMessageQueue(mq);
                         pullRequest.setProcessQueue(pq);
                         pullRequestList.add(pullRequest);
