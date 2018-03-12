@@ -289,7 +289,7 @@ public abstract class RebalanceImpl {
                 }
                 break;
             }
-            case CLUSTERING: {     //默认是集群模式,每条消息被同一消费者组的一个消费
+            case CLUSTERING: {     //默认是集群模式,每条消息被同一消费者组的一个消费,
                 // 获取 topic 对应的 队列 和 consumer信息
                 Set<MessageQueue> mqSet = this.topicSubscribeInfoTable.get(topic);
                 List<String> cidAll = this.mQClientFactory.findConsumerIdList(topic, consumerGroup);

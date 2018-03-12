@@ -234,8 +234,12 @@ public class RouteInfoManager {
     }
 
     /**
+<<<<<<< Updated upstream
      * 创建topic的QueueData,将其加入到{@link #topicQueueTable}中
      * 在注册Broker的Master || 更新Topic配置  时触发,这样Producer和Consumer就能获取到可用的QueueData
+=======
+     * 更新 topic 队列信息
+>>>>>>> Stashed changes
      *
      * @param brokerName  broker名
      * @param topicConfig topic配置
