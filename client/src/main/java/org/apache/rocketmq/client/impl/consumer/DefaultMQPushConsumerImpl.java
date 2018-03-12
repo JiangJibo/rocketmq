@@ -576,10 +576,9 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 : RemotingHelper.parseSocketAddressAddr(msg.getStoreHost());
             this.mQClientFactory.getMQClientAPIImpl().consumerSendMessageBack(brokerAddr, msg,
                 this.defaultMQPushConsumer.getConsumerGroup(), delayLevel, 5000, getMaxReconsumeTimes());
-        } catch (Exception e) { // TODO 疑问：什么情况下会发生异常
-            // 异常时，使用Client内置Producer发回消息
+        } catch (Exception e) {
+            // 当sendMessageBack出现异常，发送失败时，调用Client内部Producer发送消息到 %RETRY%+consumerGroup
             log.error("sendMessageBack Exception, " + this.defaultMQPushConsumer.getConsumerGroup(), e);
-
             Message newMsg = new Message(MixAll.getRetryTopic(this.defaultMQPushConsumer.getConsumerGroup()), msg.getBody());
 
             String originMsgId = MessageAccessor.getOriginMessageId(msg);
