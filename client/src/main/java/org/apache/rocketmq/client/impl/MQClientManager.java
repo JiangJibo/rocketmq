@@ -61,7 +61,7 @@ public class MQClientManager {
      * @return MQ Client Instance
      */
     public MQClientInstance getAndCreateMQClientInstance(final ClientConfig clientConfig, RPCHook rpcHook) {
-        String clientId = clientConfig.buildMQClientId();  //ip@DEFAULT
+        String clientId = clientConfig.buildMQClientId();  //192.168.0.1@10072 ,代表了当前客户端的唯一编号
         MQClientInstance instance = this.factoryTable.get(clientId);
         if (null == instance) {
             instance =

@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * 消费拉取消息API封装
  */
 public class PullAPIWrapper {
+
     private final Logger log = ClientLogger.getLog();
     private final MQClientInstance mQClientFactory;
     private final String consumerGroup;
@@ -81,14 +82,14 @@ public class PullAPIWrapper {
      * 1. 更新消息队列拉取消息Broker编号的映射
      * 2. 解析消息，并根据消息tagCode匹配合适消息
      *
-     * @param mq 消息队列
-     * @param pullResult 拉取结果
+     * @param mq               消息队列
+     * @param pullResult       拉取结果
      * @param subscriptionData 订阅信息
      * @return 拉取结果
      */
     public PullResult processPullResult(final MessageQueue mq, final PullResult pullResult,
-        final SubscriptionData subscriptionData) {
-        PullResultExt pullResultExt = (PullResultExt) pullResult;
+                                        final SubscriptionData subscriptionData) {
+        PullResultExt pullResultExt = (PullResultExt)pullResult;
 
         // 更新消息队列拉取消息Broker编号的映射
         this.updatePullFromWhichNode(mq, pullResultExt.getSuggestWhichBrokerId());
@@ -141,7 +142,7 @@ public class PullAPIWrapper {
     /**
      * 更新消息队列拉取消息Broker编号的映射
      *
-     * @param mq 消息队列
+     * @param mq       消息队列
      * @param brokerId Broker编号
      */
     public void updatePullFromWhichNode(final MessageQueue mq, final long brokerId) {
@@ -171,18 +172,19 @@ public class PullAPIWrapper {
 
     /**
      * 拉取消息核心方法
+     * 拉取消息的开始位置 >= 当前消费进度 ,因为可能消费者还有线程在消费已拉取到的消息
      *
-     * @param mq 消息嘟列
-     * @param subExpression 订阅表达式
-     * @param subVersion 订阅版本号
-     * @param offset 拉取队列开始位置
-     * @param maxNums 批量拉 取消息数量
-     * @param sysFlag 拉取系统标识
-     * @param commitOffset 提交消费进度
+     * @param mq                         消息嘟列
+     * @param subExpression              订阅表达式
+     * @param subVersion                 订阅版本号
+     * @param offset                     下次请求从ConsumeQueue拉取的开始位置
+     * @param maxNums                    批量拉 取消息数量
+     * @param sysFlag                    拉取系统标识
+     * @param commitOffset               提交ConsumeQueue的消费进度
      * @param brokerSuspendMaxTimeMillis broker挂起请求最大时间
-     * @param timeoutMillis 请求broker超时时间
-     * @param communicationMode 通讯模式
-     * @param pullCallback 拉取回调
+     * @param timeoutMillis              请求broker超时时间
+     * @param communicationMode          通讯模式
+     * @param pullCallback               拉取回调
      * @return 拉取消息结果。只有通讯模式为同步时，才返回结果，否则返回null。
      * @throws MQClientException 当寻找不到 broker 时，或发生其他client异常
      * @throws RemotingException 当远程调用发生异常时
@@ -278,7 +280,7 @@ public class PullAPIWrapper {
     /**
      * 计算filtersrv地址。如果有多个filtersrv，随机选择一个。
      *
-     * @param topic Topic
+     * @param topic      Topic
      * @param brokerAddr broker地址
      * @return filtersrv地址
      * @throws MQClientException 当filtersrv不存在时
@@ -310,8 +312,7 @@ public class PullAPIWrapper {
         int value = random.nextInt();
         if (value < 0) {
             value = Math.abs(value);
-            if (value < 0)
-                value = 0;
+            if (value < 0) { value = 0; }
         }
         return value;
     }

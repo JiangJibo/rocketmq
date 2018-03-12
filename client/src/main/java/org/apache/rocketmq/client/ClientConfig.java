@@ -28,6 +28,9 @@ public class ClientConfig {
     public static final String SEND_MESSAGE_WITH_VIP_CHANNEL_PROPERTY = "com.rocketmq.sendMessageWithVIPChannel";
     private String namesrvAddr = System.getProperty(MixAll.NAMESRV_ADDR_PROPERTY, System.getenv(MixAll.NAMESRV_ADDR_ENV));
     private String clientIP = RemotingUtil.getLocalAddress();
+    /**
+     * 实际运行时会是一个字符串化的数字吗，比如10072,360等
+     */
     private String instanceName = System.getProperty("rocketmq.client.name", "DEFAULT");
     private int clientCallbackExecutorThreads = Runtime.getRuntime().availableProcessors();
     /**
@@ -48,8 +51,10 @@ public class ClientConfig {
 
     /**
      * 创建MQ ClientId
+     * 192.168.0.1@10072
+     * 10072是instanceName，随机一个数字
      *
-     * @return ip@instanceName@unitName
+     * @return
      */
     public String buildMQClientId() {
         StringBuilder sb = new StringBuilder();
@@ -83,6 +88,7 @@ public class ClientConfig {
 
     /**
      * 设置instance名为pid
+     * pid为一个数字，比如10072等，不是port
      */
     public void changeInstanceNameToPID() {
         if (this.instanceName.equals("DEFAULT")) {

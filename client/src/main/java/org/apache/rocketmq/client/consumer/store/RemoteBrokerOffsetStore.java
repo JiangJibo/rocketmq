@@ -71,6 +71,7 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
 
             if (null != offsetOld) {
                 if (increaseOnly) {
+                    //进度更新只能增长，不能降低，多个线程同时更新时，只有比当前进度靠后的能更新
                     MixAll.compareAndIncreaseOnly(offsetOld, offset);
                 } else {
                     offsetOld.set(offset);
