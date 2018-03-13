@@ -710,13 +710,13 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 break;
         }
 
-        //  更新 Topic路由信息   （在Consumer start时马上调用，之后每隔一段时间调用一次）
+        //  从Namesrv获取TopicRouteData,更新TopicPublishInfo和MessageQueue   （在Consumer start时马上调用，之后每隔一段时间调用一次）
         this.updateTopicSubscribeInfoWhenSubscriptionChanged();
 
-        // 通过心跳同步Consumer信息   （在Consumer start时马上调用，之后每隔一段时间调用一次）
+        // 向TopicRouteData里的所有Broker发送心跳,注册Consumer信息到Broker上   （在Consumer start时马上调用，之后每隔一段时间调用一次）
         this.mQClientFactory.sendHeartbeatToAllBrokerWithLock();
 
-        // 唤醒MessageQueue均衡服务
+        // 唤醒MessageQueue均衡服务,负载均衡后马上开启第一次拉取消息
         this.mQClientFactory.rebalanceImmediately();
     }
 
