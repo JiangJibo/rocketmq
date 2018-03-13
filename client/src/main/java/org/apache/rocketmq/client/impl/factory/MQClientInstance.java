@@ -262,14 +262,14 @@ public class MQClientInstance {
                     }
                     // Start request-response channel
                     this.mQClientAPIImpl.start();
-                    // Start various schedule tasks
+                    // 启动多个定时任务
                     this.startScheduledTask();
                     // Start pull service
-                    this.pullMessageService.start(); // TODO 疑问：producer调用这个干啥
+                    this.pullMessageService.start();
                     // Start rebalance service
-                    this.rebalanceService.start(); // TODO 疑问：producer调用这个干啥
-                    // Start push service
-                    this.defaultMQProducer.getDefaultMQProducerImpl().start(false); // TODO 疑问：为什么这里要调用
+                    this.rebalanceService.start();
+                    //启动内部默认的生产者,用于消费者SendMessageBack
+                    this.defaultMQProducer.getDefaultMQProducerImpl().start(false);
                     log.info("the client factory [{}] start OK", this.clientId);
                     this.serviceState = ServiceState.RUNNING;
                     break;
@@ -313,7 +313,7 @@ public class MQClientInstance {
             }
         }, 10, this.clientConfig.getPollNameServerInteval(), TimeUnit.MILLISECONDS);
 
-        // 定时清空下线的Broker(Master或Slave)，向Broker发送心跳,传递生产者或订阅信息
+        // 每隔30S清空下线的Broker(Master或Slave)，向Broker发送心跳,传递生产者或订阅信息
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
