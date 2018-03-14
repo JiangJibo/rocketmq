@@ -1081,11 +1081,7 @@ public class MQClientInstance {
      * @param onlyThisBroker 是否必须是该broker
      * @return Broker信息
      */
-    public FindBrokerResult findBrokerAddressInSubscribe(//
-                                                         final String brokerName, //
-                                                         final long brokerId, //
-                                                         final boolean onlyThisBroker//
-    ) {
+    public FindBrokerResult findBrokerAddressInSubscribe(final String brokerName, final long brokerId, final boolean onlyThisBroker) {
         String brokerAddr = null; // broker地址
         boolean slave = false; // 是否为从节点
         boolean found = false; // 是否找到

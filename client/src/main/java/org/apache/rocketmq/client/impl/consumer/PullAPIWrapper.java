@@ -57,8 +57,7 @@ public class PullAPIWrapper {
      * 消息队列 与 拉取Broker 的映射
      * 当拉取消息时，会通过该映射获取拉取请求对应的Broker
      */
-    private ConcurrentHashMap<MessageQueue, AtomicLong/* brokerId */> pullFromWhichNodeTable =
-        new ConcurrentHashMap<MessageQueue, AtomicLong>(32);
+    private ConcurrentHashMap<MessageQueue, AtomicLong/* brokerId */> pullFromWhichNodeTable = new ConcurrentHashMap<MessageQueue, AtomicLong>(32);
     /**
      * 是否使用默认Broker
      */
@@ -174,7 +173,7 @@ public class PullAPIWrapper {
      * 拉取消息核心方法
      * 拉取消息的开始位置 >= 当前消费进度 ,因为可能消费者还有线程在消费已拉取到的消息
      *
-     * @param mq                         消息嘟列
+     * @param mq                         消息队列
      * @param subExpression              订阅表达式
      * @param subVersion                 订阅版本号
      * @param offset                     下次请求从ConsumeQueue拉取的开始位置
@@ -206,20 +205,17 @@ public class PullAPIWrapper {
     ) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
         // 获取Broker信息
         FindBrokerResult findBrokerResult =
-            this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(),
-                this.recalculatePullFromWhichNode(mq), false);
+            this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(), this.recalculatePullFromWhichNode(mq), false);
         if (null == findBrokerResult) {
             this.mQClientFactory.updateTopicRouteInfoFromNameServer(mq.getTopic());
-            findBrokerResult =
-                this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(),
-                    this.recalculatePullFromWhichNode(mq), false);
+            findBrokerResult = this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(), this.recalculatePullFromWhichNode(mq), false);
         }
 
         // 请求拉取消息
         if (findBrokerResult != null) {
             int sysFlagInner = sysFlag;
 
-            if (findBrokerResult.isSlave()) {
+            if (findBrokerResult.isSlave()) {  //如果是从Slave拉取消息,则不提交消费进度
                 sysFlagInner = PullSysFlag.clearCommitOffsetFlag(sysFlagInner);
             }
 
@@ -256,13 +252,15 @@ public class PullAPIWrapper {
     }
 
     /**
-     * 计算消息队列拉取消息对应的Broker编号
+     * 重新计算消息队列拉取消息对应的Broker编号
+     * 这个方法就是实现主从切换的关键
+     * 当Master宕机时,返回slave的BrokerId : 1
      *
      * @param mq 消息队列
      * @return Broker编号
      */
     public long recalculatePullFromWhichNode(final MessageQueue mq) {
-        // 若开启默认Broker开关，则返回默认Broker编号
+        // 若开启默认Broker开关，则返回Master的编号 ： 0l
         if (this.isConnectBrokerByUser()) {
             return this.defaultBrokerId;
         }

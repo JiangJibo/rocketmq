@@ -370,6 +370,7 @@ public abstract class RebalanceImpl {
      * 当负载均衡时，更新消费队列,也就是Broker或者Consumer有变化,新增了或者宕机了
      * - 移除 在processQueueTable && 不存在于 mqSet 里的消息队列
      * - 增加 不在processQueueTable && 存在于mqSet 里的消息队列
+     * - 发起对新的MessageQueue的消费请求
      *
      * @param topic Topic
      * @param mqSet 负载均衡结果后最新的消息队列数组
@@ -415,7 +416,7 @@ public abstract class RebalanceImpl {
         }
 
         // 增加 不在processQueueTable && 存在于mqSet 里的消息队列。
-        List<PullRequest> pullRequestList = new ArrayList<>(); // 拉消息请求数组
+        List<PullRequest> pullRequestList = new ArrayList<>();
         for (MessageQueue mq : mqSet) {
             if (!this.processQueueTable.containsKey(mq)) {
                 if (isOrder && !this.lock(mq)) { // 顺序消息锁定消息队列
@@ -425,7 +426,7 @@ public abstract class RebalanceImpl {
 
                 this.removeDirtyOffset(mq);
                 ProcessQueue pq = new ProcessQueue();
-                long nextOffset = this.computePullFromWhere(mq);
+                long nextOffset = this.computePullFromWhere(mq);  //从Broker读取MessageQueue的消费OffSet
                 if (nextOffset >= 0) {
                     ProcessQueue pre = this.processQueueTable.putIfAbsent(mq, pq);
                     if (pre != null) {
