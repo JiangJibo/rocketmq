@@ -367,12 +367,12 @@ public abstract class RebalanceImpl {
     }
 
     /**
-     * 当负载均衡时，更新 消息处理队列
+     * 当负载均衡时，更新消费队列,也就是Broker或者Consumer有变化,新增了或者宕机了
      * - 移除 在processQueueTable && 不存在于 mqSet 里的消息队列
      * - 增加 不在processQueueTable && 存在于mqSet 里的消息队列
      *
      * @param topic Topic
-     * @param mqSet 负载均衡结果后的消息队列数组
+     * @param mqSet 负载均衡结果后最新的消息队列数组
      * @param isOrder 是否顺序
      * @return 是否变更
      */
@@ -388,7 +388,7 @@ public abstract class RebalanceImpl {
 
             if (mq.getTopic().equals(topic)) {
                 if (!mqSet.contains(mq)) { // 不包含的队列
-                    pq.setDropped(true);
+                    pq.setDropped(true);   //设置此队列被丢弃,不会再PullMessage
                     if (this.removeUnnecessaryMessageQueue(mq, pq)) {
                         it.remove();
                         changed = true;
