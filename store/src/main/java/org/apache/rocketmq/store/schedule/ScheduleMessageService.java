@@ -33,6 +33,9 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ *
+ */
 public class ScheduleMessageService extends ConfigManager {
 
     public static final String SCHEDULE_TOPIC = "SCHEDULE_TOPIC_XXXX";

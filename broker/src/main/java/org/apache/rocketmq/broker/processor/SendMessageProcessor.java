@@ -141,7 +141,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         // 计算retry Topic  "%RETRY%+consumeGroup"
         String newTopic = MixAll.getRetryTopic(requestHeader.getGroup());
 
-        // 计算队列编号（独有）
+        // 计算队列编号（独有）  queueIdInt = 1
         int queueIdInt = Math.abs(this.random.nextInt() % 99999999) % subscriptionGroupConfig.getRetryQueueNums();
 
         // 计算sysFlag（独有）
@@ -180,7 +180,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             MessageAccessor.putProperty(msgExt, MessageConst.PROPERTY_RETRY_TOPIC, msgExt.getTopic());
         }
 
-        // 设置消息不等待存储完成（独有） TODO 疑问：如果设置成不等待存储，broker设置成同步落盘，岂不是不能批量提交了？
+        // 设置消息不等待存储完成（独有）
         msgExt.setWaitStoreMsgOK(false);
 
         // 处理 delayLevel（独有）。
@@ -189,7 +189,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         if (request.getVersion() >= MQVersion.Version.V3_4_9.ordinal()) {
             maxReconsumeTimes = requestHeader.getMaxReconsumeTimes();
         }
-        if (msgExt.getReconsumeTimes() >= maxReconsumeTimes || delayLevel < 0) { // 如果超过最大消费次数，则topic修改成"%DLQ%" + 分组名，即加入 死信队列(Dead Letter Queue)
+        if (msgExt.getReconsumeTimes() >= maxReconsumeTimes || delayLevel < 0) { // 如果超过最大消费次数或者delayLevel < 0，则topic修改成"%DLQ%" + 分组名，即加入 死信队列(Dead Letter Queue)
             newTopic = MixAll.getDLQTopic(requestHeader.getGroup());
             queueIdInt = Math.abs(this.random.nextInt() % 99999999) % DLQ_NUMS_PER_GROUP;
 
@@ -203,8 +203,8 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                 return response;
             }
         } else {
-            if (0 == delayLevel) {   //延迟级别为0,增加3次消费次数
-                delayLevel = 3 + msgExt.getReconsumeTimes();
+            if (0 == delayLevel) {
+                delayLevel = 3 + msgExt.getReconsumeTimes();  //延迟级别为0,设置默认延迟级别为重消费次数 + 3 ,也就是一条消息被重试的次数越多,重投递的间隔越长
             }
             msgExt.setDelayTimeLevel(delayLevel);
         }
@@ -217,12 +217,12 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         MessageAccessor.setProperties(msgInner, msgExt.getProperties());
         msgInner.setPropertiesString(MessageDecoder.messageProperties2String(msgExt.getProperties()));
         msgInner.setTagsCode(MessageExtBrokerInner.tagsString2tagsCode(null, msgExt.getTags()));
-        msgInner.setQueueId(queueIdInt);
+        msgInner.setQueueId(queueIdInt);  //1
         msgInner.setSysFlag(msgExt.getSysFlag());
         msgInner.setBornTimestamp(msgExt.getBornTimestamp());
         msgInner.setBornHost(msgExt.getBornHost());
         msgInner.setStoreHost(this.getStoreHost());
-        msgInner.setReconsumeTimes(msgExt.getReconsumeTimes() + 1);
+        msgInner.setReconsumeTimes(msgExt.getReconsumeTimes() + 1);  //设置重试次数 + 1
 
         // 设置原始消息编号到拓展字段（独有）
         String originMsgId = MessageAccessor.getOriginMessageId(msgExt);
