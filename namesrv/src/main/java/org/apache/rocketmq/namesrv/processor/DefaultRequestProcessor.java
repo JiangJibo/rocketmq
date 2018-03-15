@@ -289,8 +289,12 @@ public class DefaultRequestProcessor implements NettyRequestProcessor {
     }
 
     /**
+<<<<<<< Updated upstream
      * Producer第一次发送时或者是每隔30S轮询
      * 获取指定Topic的TopicRouteData
+=======
+     * 获取指定Topic的路由信息
+>>>>>>> Stashed changes
      *
      * @param ctx
      * @param request
