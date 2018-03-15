@@ -1612,13 +1612,13 @@ public class DefaultMessageStore implements MessageStore {
         private long lastFlushTimestamp = 0;
 
         private void doFlush(int retryTimes) {
-            int flushConsumeQueueLeastPages = DefaultMessageStore.this.getMessageStoreConfig().getFlushConsumeQueueLeastPages();
+            int flushConsumeQueueLeastPages = DefaultMessageStore.this.getMessageStoreConfig().getFlushConsumeQueueLeastPages(); //最少刷新2页
 
             // retryTimes == RETRY_TIMES_OVER时，进行强制flush。主要用于shutdown时。
             if (retryTimes == RETRY_TIMES_OVER) {
                 flushConsumeQueueLeastPages = 0;
             }
-            // 当时间满足flushConsumeQueueThoroughInterval时，即使写入的数量不足flushConsumeQueueLeastPages，也进行flush
+            // 当时间满足flushConsumeQueueThoroughInterval = 60S时，即使写入的数量不足flushConsumeQueueLeastPages，也进行flush
             long logicsMsgTimestamp = 0;
             int flushConsumeQueueThoroughInterval = DefaultMessageStore.this.getMessageStoreConfig().getFlushConsumeQueueThoroughInterval();
             long currentTimeMillis = System.currentTimeMillis();
@@ -1627,7 +1627,7 @@ public class DefaultMessageStore implements MessageStore {
                 flushConsumeQueueLeastPages = 0;
                 logicsMsgTimestamp = DefaultMessageStore.this.getStoreCheckpoint().getLogicsMsgTimestamp();
             }
-            // flush消费队列
+            // flush消费队列,默认情况下仅进行一次flush
             ConcurrentHashMap<String, ConcurrentHashMap<Integer, ConsumeQueue>> tables = DefaultMessageStore.this.consumeQueueTable;
             for (ConcurrentHashMap<Integer, ConsumeQueue> maps : tables.values()) {
                 for (ConsumeQueue cq : maps.values()) {

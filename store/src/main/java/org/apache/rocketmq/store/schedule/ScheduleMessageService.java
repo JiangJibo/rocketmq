@@ -34,6 +34,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ScheduleMessageService extends ConfigManager {
+
     public static final String SCHEDULE_TOPIC = "SCHEDULE_TOPIC_XXXX";
     private static final Logger log = LoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private static final long FIRST_DELAY_TIME = 1000L;
@@ -89,7 +90,7 @@ public class ScheduleMessageService extends ConfigManager {
     /**
      * 计算 投递时间【计划消费时间】
      *
-     * @param delayLevel 延迟级别
+     * @param delayLevel     延迟级别
      * @param storeTimestamp 存储时间
      * @return 投递时间【计划消费时间】
      */
@@ -139,12 +140,14 @@ public class ScheduleMessageService extends ConfigManager {
         return maxDelayLevel;
     }
 
+    @Override
     public String encode() {
         return this.encode(false);
     }
 
+    @Override
     public boolean load() {
-        boolean result = super.load();
+        boolean result = super.load();  //加载delayOffset.json
         result = result && this.parseDelayLevel();
         return result;
     }
@@ -183,22 +186,22 @@ public class ScheduleMessageService extends ConfigManager {
         timeUnitTable.put("m", 1000L * 60);
         timeUnitTable.put("h", 1000L * 60 * 60);
         timeUnitTable.put("d", 1000L * 60 * 60 * 24);
-
+        //消息延迟级别字符串配置:"1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h"
         String levelString = this.defaultMessageStore.getMessageStoreConfig().getMessageDelayLevel();
         try {
             String[] levelArray = levelString.split(" ");
-            for (int i = 0; i < levelArray.length; i++) {
-                String value = levelArray[i];
-                String ch = value.substring(value.length() - 1);
-                Long tu = timeUnitTable.get(ch);
+            for (int i = 0; i < levelArray.length; i++) {  //2
+                String value = levelArray[i];  //10s
+                String ch = value.substring(value.length() - 1);  //s
+                Long tu = timeUnitTable.get(ch);  //1000l
 
                 int level = i + 1;
                 if (level > this.maxDelayLevel) {
                     this.maxDelayLevel = level;
                 }
-                long num = Long.parseLong(value.substring(0, value.length() - 1));
-                long delayTimeMillis = tu * num;
-                this.delayLevelTable.put(level, delayTimeMillis);
+                long num = Long.parseLong(value.substring(0, value.length() - 1));  //10
+                long delayTimeMillis = tu * num;  //1000l * 10
+                this.delayLevelTable.put(level, delayTimeMillis);  // 3 > 1000*10 ms , 3的延迟级别对应10S的延迟
             }
         } catch (Exception e) {
             log.error("parseDelayLevel exception", e);
@@ -213,6 +216,7 @@ public class ScheduleMessageService extends ConfigManager {
      * 发送（投递）延迟消息定时任务
      */
     class DeliverDelayedMessageTimerTask extends TimerTask {
+
         /**
          * 延迟级别
          */
@@ -243,7 +247,7 @@ public class ScheduleMessageService extends ConfigManager {
          * 纠正可投递时间。
          * 因为发送级别对应的发送间隔可以调整，如果超过当前间隔，则修正成当前配置，避免后面的消息无法发送。
          *
-         * @param now 当前时间
+         * @param now              当前时间
          * @param deliverTimestamp 投递时间
          * @return 纠正结果
          */
@@ -259,7 +263,7 @@ public class ScheduleMessageService extends ConfigManager {
         }
 
         public void executeOnTimeup() {
-            ConsumeQueue cq = ScheduleMessageService.this.defaultMessageStore.findConsumeQueue(SCHEDULE_TOPIC,  delayLevel2QueueId(delayLevel));
+            ConsumeQueue cq = ScheduleMessageService.this.defaultMessageStore.findConsumeQueue(SCHEDULE_TOPIC, delayLevel2QueueId(delayLevel));
 
             long failScheduleOffset = offset;
 
@@ -292,10 +296,12 @@ public class ScheduleMessageService extends ConfigManager {
                                             continue;
                                         } else { // 发送失败
                                             // XXX: warn and notify me
-                                            log.error("ScheduleMessageService, a message time up, but reput it failed, topic: {} msgId {}", msgExt.getTopic(), msgExt.getMsgId());
+                                            log.error("ScheduleMessageService, a message time up, but reput it failed, topic: {} msgId {}", msgExt.getTopic(),
+                                                msgExt.getMsgId());
 
                                             // 安排下一次任务
-                                            ScheduleMessageService.this.timer.schedule(new DeliverDelayedMessageTimerTask(this.delayLevel, nextOffset), DELAY_FOR_A_PERIOD);
+                                            ScheduleMessageService.this.timer.schedule(new DeliverDelayedMessageTimerTask(this.delayLevel, nextOffset),
+                                                DELAY_FOR_A_PERIOD);
 
                                             // 更新进度
                                             ScheduleMessageService.this.updateOffset(this.delayLevel, nextOffset);
@@ -304,7 +310,7 @@ public class ScheduleMessageService extends ConfigManager {
                                     } catch (Exception e) {
                                         // XXX: warn and notify me
                                         log.error("ScheduleMessageService, messageTimeup execute error, drop it. msgExt="
-                                                + msgExt + ", nextOffset=" + nextOffset + ",offsetPy=" + offsetPy + ",sizePy=" + sizePy, e);
+                                            + msgExt + ", nextOffset=" + nextOffset + ",offsetPy=" + offsetPy + ",sizePy=" + sizePy, e);
                                     }
                                 }
                             } else {

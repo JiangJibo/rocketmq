@@ -130,7 +130,7 @@ public class CommitLog {
         this.flushCommitLogService.start();
 
         if (defaultMessageStore.getMessageStoreConfig().isTransientStorePoolEnable()) {
-            this.commitLogService.start(); // TODO 疑问：为啥要用这个
+            this.commitLogService.start();
         }
     }
 

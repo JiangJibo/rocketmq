@@ -125,6 +125,7 @@ public class BrokerStartup {
                     properties = new Properties();
                     properties.load(in);
 
+                    //将"-c"指定的配置文件注入到Broker配置中
                     parsePropertie2SystemEnv(properties);
                     MixAll.properties2Object(properties, brokerConfig);
                     MixAll.properties2Object(properties, nettyServerConfig);
@@ -148,7 +149,7 @@ public class BrokerStartup {
                     + " variable in your environment to match the location of the RocketMQ installation");
                 System.exit(-2);
             }
-
+            //设置Namesrv地址
             brokerConfig.setNamesrvAddr("localhost:9876");
             String namesrvAddr = brokerConfig.getNamesrvAddr();
             if (null != namesrvAddr) {
@@ -194,14 +195,12 @@ public class BrokerStartup {
             MixAll.printObjectProperties(log, nettyClientConfig);
             MixAll.printObjectProperties(log, messageStoreConfig);
 
-            final BrokerController controller = new BrokerController(//
-                brokerConfig, //
-                nettyServerConfig, //
-                nettyClientConfig, //
-                messageStoreConfig);
+            final BrokerController controller = new BrokerController(
+                brokerConfig, nettyServerConfig, nettyClientConfig, messageStoreConfig);
             // remember all configs to prevent discard
             controller.getConfiguration().registerConfig(properties);
 
+            //BrokerController先进行初始化
             boolean initResult = controller.initialize();
             if (!initResult) {
                 controller.shutdown();
