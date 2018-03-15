@@ -147,7 +147,7 @@ public class RebalancePushImpl extends RebalanceImpl {
                 if (lastOffset >= 0) {
                     result = lastOffset;
                 }
-                // 如果指定的Broker没有消费进度,那么从maxOffset(最新的消息)处消费; 否则就接着上次的消费进度
+                // 如果Broker上没有当前ConsumeGroup的消费进度,那么从maxOffset(最新的消息)处消费; 否则就接着上次的消费进度
                 else if (-1 == lastOffset) {
                     //如果是重试队列，就从0开始消费
                     if (mq.getTopic().startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
@@ -164,7 +164,7 @@ public class RebalancePushImpl extends RebalanceImpl {
                 }
                 break;
             }
-            // 如果指定的Broker没有消费进度,那么从0(第一条消息)处消费; 否则就接着上次的消费进度
+            // 如果Broker上没有当前ConsumeGroup的消费进度,那么从0(第一条消息)处消费; 否则就接着上次的消费进度
             case CONSUME_FROM_FIRST_OFFSET: {
                 long lastOffset = offsetStore.readOffset(mq, ReadOffsetType.READ_FROM_STORE);
                 if (lastOffset >= 0) {

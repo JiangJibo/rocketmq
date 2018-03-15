@@ -27,6 +27,7 @@ import org.apache.rocketmq.common.protocol.body.UnlockBatchRequestBody;
 import org.apache.rocketmq.common.protocol.heartbeat.ConsumeType;
 import org.apache.rocketmq.common.protocol.heartbeat.MessageModel;
 import org.apache.rocketmq.common.protocol.heartbeat.SubscriptionData;
+import org.apache.rocketmq.common.protocol.route.TopicRouteData;
 import org.slf4j.Logger;
 
 import java.util.*;
@@ -37,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Base class for rebalance algorithm
  */
 public abstract class RebalanceImpl {
+
     protected static final Logger log = ClientLogger.getLog();
     /**
      * 消息队列 和 消息处理队列 Map
@@ -68,7 +70,7 @@ public abstract class RebalanceImpl {
     protected MQClientInstance mQClientFactory;
 
     public RebalanceImpl(String consumerGroup, MessageModel messageModel, AllocateMessageQueueStrategy allocateMessageQueueStrategy,
-        MQClientInstance mQClientFactory) {
+                         MQClientInstance mQClientFactory) {
         this.consumerGroup = consumerGroup;
         this.messageModel = messageModel;
         this.allocateMessageQueueStrategy = allocateMessageQueueStrategy;
@@ -102,8 +104,7 @@ public abstract class RebalanceImpl {
             final String brokerName = entry.getKey();
             final Set<MessageQueue> mqs = entry.getValue();
 
-            if (mqs.isEmpty())
-                continue;
+            if (mqs.isEmpty()) { continue; }
 
             FindBrokerResult findBrokerResult = this.mQClientFactory.findBrokerAddressInSubscribe(brokerName, MixAll.MASTER_ID, true);
             if (findBrokerResult != null) {
@@ -195,8 +196,7 @@ public abstract class RebalanceImpl {
             final String brokerName = entry.getKey();
             final Set<MessageQueue> mqs = entry.getValue();
 
-            if (mqs.isEmpty())
-                continue;
+            if (mqs.isEmpty()) { continue; }
 
             FindBrokerResult findBrokerResult = this.mQClientFactory.findBrokerAddressInSubscribe(brokerName, MixAll.MASTER_ID, true);
             if (findBrokerResult != null) {
@@ -267,7 +267,7 @@ public abstract class RebalanceImpl {
     /**
      * 消费者对 单个Topic 重新进行平衡
      *
-     * @param topic Topic
+     * @param topic   Topic
      * @param isOrder 是否顺序
      */
     private void rebalanceByTopic(final String topic, final boolean isOrder) {
@@ -336,7 +336,8 @@ public abstract class RebalanceImpl {
                     boolean changed = this.updateProcessQueueTableInRebalance(topic, allocateResultSet, isOrder);
                     if (changed) {
                         log.info(
-                            "rebalanced result changed. allocateMessageQueueStrategyName={}, group={}, topic={}, clientId={}, mqAllSize={}, cidAllSize={}, rebalanceResultSize={}, rebalanceResultSet={}",
+                            "rebalanced result changed. allocateMessageQueueStrategyName={}, group={}, topic={}, clientId={}, mqAllSize={}, cidAllSize={}, "
+                                + "rebalanceResultSize={}, rebalanceResultSet={}",
                             strategy.getName(), consumerGroup, topic, this.mQClientFactory.getClientId(), mqSet.size(), cidAll.size(),
                             allocateResultSet.size(), allocateResultSet);
                         this.messageQueueChanged(topic, mqSet, allocateResultSet);
@@ -367,13 +368,14 @@ public abstract class RebalanceImpl {
     }
 
     /**
-     * 当负载均衡时，更新消费队列,也就是Broker或者Consumer有变化,新增了或者宕机了
+     * 当负载均衡时,依据从Namesrv获取到的最新的{@link TopicRouteData}更新{@link #processQueueTable}里的 : MessageQueue => ProcessQueue
+     * 若Broker或者Consumer有变化,新增了或者宕机了:
      * - 移除 在processQueueTable && 不存在于 mqSet 里的消息队列
      * - 增加 不在processQueueTable && 存在于mqSet 里的消息队列
      * - 发起对新的MessageQueue的消费请求
      *
-     * @param topic Topic
-     * @param mqSet 负载均衡结果后最新的消息队列数组
+     * @param topic   Topic
+     * @param mqSet   负载均衡结果后最新的消息队列数组
      * @param isOrder 是否顺序
      * @return 是否变更
      */
@@ -388,7 +390,7 @@ public abstract class RebalanceImpl {
             ProcessQueue pq = next.getValue();
 
             if (mq.getTopic().equals(topic)) {
-                if (!mqSet.contains(mq)) { // 不包含的队列
+                if (!mqSet.contains(mq)) { // 不再属于自己的队列
                     pq.setDropped(true);   //设置此队列被丢弃,不会再PullMessage
                     if (this.removeUnnecessaryMessageQueue(mq, pq)) {
                         it.remove();

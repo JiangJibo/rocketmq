@@ -280,7 +280,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
 
     /**
      * 当消息为重试消息，设置Topic为原始Topic
-     * 例如：%RETRY%please_rename_unique_group_name_4 =》TopicTest
+     * 例如：%RETRY%consumeGroup =》 originalTopic
      *
      * @param msgs 消息列表
      */
@@ -369,7 +369,6 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
                 // 将消费失新发回Broker,若发送失败，则提交延迟消费请求,也就是一会儿后在客户端重新消费
                 if (!msgBackFailed.isEmpty()) {
                     consumeRequest.getMsgs().removeAll(msgBackFailed);
-
                     this.submitConsumeRequestLater(msgBackFailed, consumeRequest.getProcessQueue(), consumeRequest.getMessageQueue());
                 }
                 break;
@@ -377,8 +376,11 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
                 break;
         }
 
-        // 移除消费成功消息，并更新最新消费进度,进度更新只能增长,不能降低
+        // 移除消费成功消息，并返回消费的最新进度,
+        // 当TreeMap内消费消费完时,返回putMessage时的maxOffset(最新一批消息的最大offset);
+        // 当TreeMap内还存在消息时,返回firstKey,也就是第一条消息的offset,因为不能确定里面的TreeMap内消息的消费情况
         long offset = consumeRequest.getProcessQueue().removeMessage(consumeRequest.getMsgs());
+        //更新最新消费进度,进度更新只能增长,不能降低
         if (offset >= 0 && !consumeRequest.getProcessQueue().isDropped()) {
             this.defaultMQPushConsumerImpl.getOffsetStore().updateOffset(consumeRequest.getMessageQueue(), offset, true);
         }
@@ -504,7 +506,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
             boolean hasException = false;
             ConsumeReturnType returnType = ConsumeReturnType.SUCCESS; // 消费返回结果类型
             try {
-                // 当消息为重试消息，设置Topic为原始Topic
+                // 当消息为重试消息，还原Topic为原始topic, "%RETRYconsumeGroup%" >> originalTopic
                 ConsumeMessageConcurrentlyService.this.resetRetryTopic(msgs);
 
                 // 设置开始消费时间
@@ -513,7 +515,6 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
                         MessageAccessor.setConsumeStartTimeStamp(msg, String.valueOf(System.currentTimeMillis()));
                     }
                 }
-
                 // 进行消费
                 status = listener.consumeMessage(Collections.unmodifiableList(msgs), context);
             } catch (Throwable e) {

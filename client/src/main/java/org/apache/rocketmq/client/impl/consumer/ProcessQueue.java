@@ -36,8 +36,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Queue consumption snapshot
+ * MessageQueue消费量快照
  */
 public class ProcessQueue {
+
     /**
      * Broker 消息队列分布式锁过期时间，默认30s
      */
@@ -56,7 +58,7 @@ public class ProcessQueue {
      */
     private final ReadWriteLock lockTreeMap = new ReentrantReadWriteLock();
     /**
-     * 消息映射
+     * 消息映射,消费者将拉取到的消息存入此集合中,消费时从此获取
      * key：消息队列位置
      */
     private final TreeMap<Long, MessageExt> msgTreeMap = new TreeMap<>();
@@ -142,7 +144,8 @@ public class ProcessQueue {
             try {
                 this.lockTreeMap.readLock().lockInterruptibly();
                 try {
-                    if (!msgTreeMap.isEmpty() && System.currentTimeMillis() - Long.parseLong(MessageAccessor.getConsumeStartTimeStamp(msgTreeMap.firstEntry().getValue())) > pushConsumer.getConsumeTimeout() * 60 * 1000) {
+                    if (!msgTreeMap.isEmpty() && System.currentTimeMillis() -
+                            Long.parseLong(MessageAccessor.getConsumeStartTimeStamp(msgTreeMap.firstEntry().getValue())) > pushConsumer.getConsumeTimeout() * 60 * 1000) {
                         msg = msgTreeMap.firstEntry().getValue();
                     } else {
                         break;
@@ -157,7 +160,8 @@ public class ProcessQueue {
             try {
                 // 发回超时消息
                 pushConsumer.sendMessageBack(msg, 3);
-                log.info("send expire msg back. topic={}, msgId={}, storeHost={}, queueId={}, queueOffset={}", msg.getTopic(), msg.getMsgId(), msg.getStoreHost(), msg.getQueueId(), msg.getQueueOffset());
+                log.info("send expire msg back. topic={}, msgId={}, storeHost={}, queueId={}, queueOffset={}", msg.getTopic(), msg.getMsgId(),
+                    msg.getStoreHost(), msg.getQueueId(), msg.getQueueOffset());
 
                 // 判断此时消息是否依然是第一条，若是，则进行移除
                 try {
@@ -278,7 +282,7 @@ public class ProcessQueue {
                             removedCnt--;
                         }
                     }
-                    msgCount.addAndGet(removedCnt);
+                    msgCount.addAndGet(removedCnt);  //删除消息时减小msgCount大小
 
                     if (!msgTreeMap.isEmpty()) {
                         result = msgTreeMap.firstKey();

@@ -637,7 +637,7 @@ public class MQClientInstance {
                             // 克隆对象的原因：topicRouteData会被设置到下面的publishInfo/subscribeInfo
                             TopicRouteData cloneTopicRouteData = topicRouteData.cloneTopicRouteData();
 
-                            // 更新 Broker 地址相关信息,当某个Broker心跳超时后,会被从addrs从移除
+                            // 更新 Broker 地址相关信息,当某个Broker心跳超时后,会被从BrokerData的brokerAddrs中移除(由Namesrv定时操作)
                             for (BrokerData bd : topicRouteData.getBrokerDatas()) {
                                 this.brokerAddrTable.put(bd.getBrokerName(), bd.getBrokerAddrs());
                             }

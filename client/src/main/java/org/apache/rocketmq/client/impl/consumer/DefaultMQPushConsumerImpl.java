@@ -250,7 +250,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
             return;
         }
 
-        // 判断是否超过最大持有消息数量。默认最大值为1000。
+        // 判断是否超过最大持有消息数量。默认最大值为1000
         long size = processQueue.getMsgCount().get();
         if (size > this.defaultMQPushConsumer.getPullThresholdForQueue()) {
             this.executePullRequestLater(pullRequest, PULL_TIME_DELAY_MILLS_WHEN_FLOW_CONTROL); // 提交延迟消息拉取请求。50ms。
@@ -337,11 +337,8 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                                 boolean dispathToConsume = processQueue.putMessage(pullResult.getMsgFoundList());
 
                                 // 提交消费请求
-                                DefaultMQPushConsumerImpl.this.consumeMessageService.submitConsumeRequest(//
-                                    pullResult.getMsgFoundList(), //
-                                    processQueue, //
-                                    pullRequest.getMessageQueue(), //
-                                    dispathToConsume);
+                                DefaultMQPushConsumerImpl.this.consumeMessageService
+                                    .submitConsumeRequest(pullResult.getMsgFoundList(), processQueue, pullRequest.getMessageQueue(), dispathToConsume);
 
                                 // 提交下次拉取消息请求
                                 if (DefaultMQPushConsumerImpl.this.defaultMQPushConsumer.getPullInterval() > 0) {
