@@ -141,7 +141,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         // 计算retry Topic  "%RETRY%+consumeGroup"
         String newTopic = MixAll.getRetryTopic(requestHeader.getGroup());
 
-        // 计算队列编号（独有）  queueIdInt = 1
+        // 计算队列编号（独有）  queueIdInt = 0
         int queueIdInt = Math.abs(this.random.nextInt() % 99999999) % subscriptionGroupConfig.getRetryQueueNums();
 
         // 计算sysFlag（独有）
@@ -194,7 +194,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             queueIdInt = Math.abs(this.random.nextInt() % 99999999) % DLQ_NUMS_PER_GROUP;
 
             topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(newTopic, //
-                DLQ_NUMS_PER_GROUP, //
+                DLQ_NUMS_PER_GROUP,
                 PermName.PERM_WRITE, 0
             );
             if (null == topicConfig) {
@@ -217,7 +217,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         MessageAccessor.setProperties(msgInner, msgExt.getProperties());
         msgInner.setPropertiesString(MessageDecoder.messageProperties2String(msgExt.getProperties()));
         msgInner.setTagsCode(MessageExtBrokerInner.tagsString2tagsCode(null, msgExt.getTags()));
-        msgInner.setQueueId(queueIdInt);  //1
+        msgInner.setQueueId(queueIdInt);  //0
         msgInner.setSysFlag(msgExt.getSysFlag());
         msgInner.setBornTimestamp(msgExt.getBornTimestamp());
         msgInner.setBornHost(msgExt.getBornHost());

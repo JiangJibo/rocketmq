@@ -1680,7 +1680,6 @@ public class DefaultMessageStore implements MessageStore {
      * 该服务不断生成 消息位置信息 到 消费队列(ConsumeQueue)
      * 该服务不断生成 消息索引 到 索引文件(IndexFile)
      */
-    @SuppressWarnings("SpellCheckingInspection")
     class ReputMessageService extends ServiceThread {
 
         /**
@@ -1736,7 +1735,7 @@ public class DefaultMessageStore implements MessageStore {
             for (boolean doNext = true; this.isCommitLogAvailable() && doNext; ) {
 
                 // TODO 疑问：这个是啥
-                if (DefaultMessageStore.this.getMessageStoreConfig().isDuplicationEnable() //
+                if (DefaultMessageStore.this.getMessageStoreConfig().isDuplicationEnable()
                     && this.reputFromOffset >= DefaultMessageStore.this.getConfirmOffset()) {
                     break;
                 }
@@ -1752,10 +1751,11 @@ public class DefaultMessageStore implements MessageStore {
                             // 生成重放消息重放调度请求,从mappedByteBuffer中读取字节，解析成消息
                             DispatchRequest dispatchRequest = DefaultMessageStore.this.commitLog.checkMessageAndReturnSize(result.getByteBuffer(), false,
                                 false);
-                            int size = dispatchRequest.getMsgSize(); // 消息长度
+                            int size = dispatchRequest.getMsgSize(); // 消息总长度
                             // 根据请求的结果处理
                             if (dispatchRequest.isSuccess()) {
-                                if (size > 0) { // 成功读取Message
+                                if (size > 0) {
+                                    // 成功读取Message,更新ConsumeQueue里的位置信息,更新IndexFile
                                     DefaultMessageStore.this.doDispatch(dispatchRequest);
                                     // 通知有新消息
                                     if (BrokerRole.SLAVE != DefaultMessageStore.this.getMessageStoreConfig().getBrokerRole()

@@ -613,10 +613,10 @@ public class CommitLog {
                     msg.setDelayTimeLevel(this.defaultMessageStore.getScheduleMessageService().getMaxDelayLevel());
                 }
 
-                // 存储消息时，延迟消息进入 `Topic` 为 `SCHEDULE_TOPIC_XXXX` 。
+                // 存储消息时，延时消息进入 `Topic` 为 `SCHEDULE_TOPIC_XXXX` 。
                 topic = ScheduleMessageService.SCHEDULE_TOPIC;
 
-                // 延迟级别 与 消息队列编号 做固定映射
+                //  消息队列编号 与 延迟级别  做固定映射 queueId = delayLevel - 1
                 queueId = ScheduleMessageService.delayLevel2QueueId(msg.getDelayTimeLevel());
 
                 // Backup real topic, queueId
