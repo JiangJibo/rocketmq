@@ -1041,9 +1041,7 @@ public class DefaultMessageStore implements MessageStore {
         // 获取 queueId 对应的 消费队列
         ConsumeQueue logic = map.get(queueId);
         if (null == logic) {
-            ConsumeQueue newLogic = new ConsumeQueue(
-                topic,
-                queueId,
+            ConsumeQueue newLogic = new ConsumeQueue(topic, queueId,
                 StorePathConfigHelper.getStorePathConsumeQueue(this.messageStoreConfig.getStorePathRootDir()),  //rootDir + File.separator + "consumequeue"
                 this.getMessageStoreConfig().getMapedFileSizeConsumeQueue(),   // 6000000(字节)
                 this);

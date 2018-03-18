@@ -282,6 +282,7 @@ public class ScheduleMessageService extends ConfigManager {
                             long tagsCode = bufferCQ.getByteBuffer().getLong();
 
                             long now = System.currentTimeMillis();
+                            //重试消息ConsumeQueue的tagsCode存储重投递时间
                             long deliverTimestamp = this.correctDeliverTimestamp(now, tagsCode);
 
                             nextOffset = offset + (i / ConsumeQueue.CQ_STORE_UNIT_SIZE);
@@ -295,7 +296,7 @@ public class ScheduleMessageService extends ConfigManager {
                                         // 发送消息
                                         MessageExtBrokerInner msgInner = this.messageTimeup(msgExt);
                                         PutMessageResult putMessageResult = ScheduleMessageService.this.defaultMessageStore.putMessage(msgInner);
-                                        if (putMessageResult != null && putMessageResult.getPutMessageStatus() == PutMessageStatus.PUT_OK) { // 发送成功
+                                        if (putMessageResult != null && putMessageResult.getPutMessageStatus() == PutMessageStatus.PUT_OK) {
                                             continue;
                                         } else { // 发送失败
                                             // XXX: warn and notify me

@@ -380,6 +380,7 @@ public class CommitLog {
                         }
 
                         if (delayLevel > 0) {
+                            //当是延时消息时，ConsumeQueue里的tagsCode存储延迟投递时间
                             tagsCode = this.defaultMessageStore.getScheduleMessageService().computeDeliverTimestamp(delayLevel,
                                 storeTimestamp);
                         }

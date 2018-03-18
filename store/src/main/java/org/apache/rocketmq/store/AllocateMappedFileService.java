@@ -32,9 +32,10 @@ import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Create MappedFile in advance
+ * 分配MappedFile服务
  */
 public class AllocateMappedFileService extends ServiceThread {
+
     private static final Logger log = LoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private static int waitTimeOut = 1000 * 5;
     private ConcurrentHashMap<String, AllocateRequest> requestTable =
@@ -219,13 +220,13 @@ public class AllocateMappedFileService extends ServiceThread {
                 }
             }
         } finally {
-            if (req != null && isSuccess)
-                req.getCountDownLatch().countDown();
+            if (req != null && isSuccess) { req.getCountDownLatch().countDown(); }
         }
         return true;
     }
 
     static class AllocateRequest implements Comparable<AllocateRequest> {
+
         // Full file path
         private String filePath;
         private int fileSize;
@@ -270,9 +271,7 @@ public class AllocateMappedFileService extends ServiceThread {
         }
 
         public int compareTo(AllocateRequest other) {
-            if (this.fileSize < other.fileSize)
-                return 1;
-            else if (this.fileSize > other.fileSize) {
+            if (this.fileSize < other.fileSize) { return 1; } else if (this.fileSize > other.fileSize) {
                 return -1;
             } else {
                 int mIndex = this.filePath.lastIndexOf(File.separator);
@@ -302,20 +301,14 @@ public class AllocateMappedFileService extends ServiceThread {
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj)
-                return true;
-            if (obj == null)
-                return false;
-            if (getClass() != obj.getClass())
-                return false;
-            AllocateRequest other = (AllocateRequest) obj;
+            if (this == obj) { return true; }
+            if (obj == null) { return false; }
+            if (getClass() != obj.getClass()) { return false; }
+            AllocateRequest other = (AllocateRequest)obj;
             if (filePath == null) {
-                if (other.filePath != null)
-                    return false;
-            } else if (!filePath.equals(other.filePath))
-                return false;
-            if (fileSize != other.fileSize)
-                return false;
+                if (other.filePath != null) { return false; }
+            } else if (!filePath.equals(other.filePath)) { return false; }
+            if (fileSize != other.fileSize) { return false; }
             return true;
         }
     }
