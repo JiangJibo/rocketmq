@@ -72,8 +72,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
                 .getNettyServerConfig().getListenPort());
     }
 
-    protected SendMessageContext buildMsgContext(ChannelHandlerContext ctx,
-                                                 SendMessageRequestHeader requestHeader) {
+    protected SendMessageContext buildMsgContext(ChannelHandlerContext ctx, SendMessageRequestHeader requestHeader) {
         if (!this.hasSendMessageHook()) {
             return null;
         }

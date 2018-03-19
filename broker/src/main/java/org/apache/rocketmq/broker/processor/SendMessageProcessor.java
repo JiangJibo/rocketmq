@@ -67,7 +67,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                 if (requestHeader == null) {
                     return null;
                 }
-                // 发送请求Context。在 hook 场景下使用
+                // 建立消息上下文
                 mqtraceContext = buildMsgContext(ctx, requestHeader);
                 // hook：处理发送消息前逻辑
                 this.executeSendMessageHookBefore(ctx, request, mqtraceContext);
@@ -269,9 +269,9 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
      * @return 响应
      * @throws RemotingCommandException 当远程调用异常
      */
-    private RemotingCommand sendMessage(final ChannelHandlerContext ctx, //
-                                        final RemotingCommand request, //
-                                        final SendMessageContext sendMessageContext, //
+    private RemotingCommand sendMessage(final ChannelHandlerContext ctx,
+                                        final RemotingCommand request,
+                                        final SendMessageContext sendMessageContext,
                                         final SendMessageRequestHeader requestHeader) throws RemotingCommandException {
 
         // 初始化响应
