@@ -121,7 +121,7 @@ public class ScheduleMessageService extends ConfigManager {
             }
         }
 
-        // 定时持久化发送进度
+        // 每隔10S持久化延时消息的投递进度
         this.timer.scheduleAtFixedRate(new TimerTask() {
 
             @Override

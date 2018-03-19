@@ -198,25 +198,25 @@ public class DefaultMessageStore implements MessageStore {
      * @throws Exception
      */
     public void start() throws Exception {
-        this.flushConsumeQueueService.start();
-        this.commitLog.start();
-        this.storeStatsService.start();
+        this.flushConsumeQueueService.start();              //启动ConsumeQueue Flush线程
+        this.commitLog.start();                             //启动Flush线程,若开启缓冲池则也启动Commit线程
+        this.storeStatsService.start();                     //启动TPS及状态新打印线程
 
         if (this.scheduleMessageService != null && SLAVE != messageStoreConfig.getBrokerRole()) {
-            this.scheduleMessageService.start();
+            this.scheduleMessageService.start();            //启动延时任务投递线程,同时每隔10S持久化每隔延时队列的投递进度
         }
 
         if (this.getMessageStoreConfig().isDuplicationEnable()) {
             this.reputMessageService.setReputFromOffset(this.commitLog.getConfirmOffset());
-        } else {
+        } else {                                            //指定ReputMessageService从CommitLog当前最大进度开始
             this.reputMessageService.setReputFromOffset(this.commitLog.getMaxOffset());
         }
-        this.reputMessageService.start();
+        this.reputMessageService.start();                   //启动CommitLog内消息的Reput线程,每隔1ms执行一次
 
-        this.haService.start();
+        this.haService.start();                             //启动高可用服务
 
         this.createTempFile();
-        this.addScheduleTask();
+        this.addScheduleTask();                             //启动清理失效的CommitLog,ConsumeQueue,IndexFile线程
         this.shutdown = false;
     }
 
@@ -1143,6 +1143,7 @@ public class DefaultMessageStore implements MessageStore {
 
     private void addScheduleTask() {
 
+        //启动CommitLog,ConsumeQueue过期文件删除工作
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
@@ -1732,7 +1733,6 @@ public class DefaultMessageStore implements MessageStore {
         private void doReput() {
             for (boolean doNext = true; this.isCommitLogAvailable() && doNext; ) {
 
-                // TODO 疑问：这个是啥
                 if (DefaultMessageStore.this.getMessageStoreConfig().isDuplicationEnable()
                     && this.reputFromOffset >= DefaultMessageStore.this.getConfirmOffset()) {
                     break;
