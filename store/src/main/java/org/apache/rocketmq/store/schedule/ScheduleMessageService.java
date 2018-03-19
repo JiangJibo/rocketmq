@@ -379,9 +379,9 @@ public class ScheduleMessageService extends ConfigManager {
             msgInner.setWaitStoreMsgOK(false);
             MessageAccessor.clearProperty(msgInner, MessageConst.PROPERTY_DELAY_TIME_LEVEL);
 
-            msgInner.setTopic(msgInner.getProperty(MessageConst.PROPERTY_REAL_TOPIC));
+            msgInner.setTopic(msgInner.getProperty(MessageConst.PROPERTY_REAL_TOPIC));     //%RETRY%+consumeGroup
 
-            String queueIdStr = msgInner.getProperty(MessageConst.PROPERTY_REAL_QUEUE_ID);
+            String queueIdStr = msgInner.getProperty(MessageConst.PROPERTY_REAL_QUEUE_ID); //0
             int queueId = Integer.parseInt(queueIdStr);
             msgInner.setQueueId(queueId);
 

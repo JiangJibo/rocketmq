@@ -166,7 +166,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             return response;
         }
 
-        // 查询消息。若不存在，返回异常错误。（独有）
+        // 根据消息的commitLog Offset查询实际的MessageExt,消费失败的实际消息
         MessageExt msgExt = this.brokerController.getMessageStore().lookMessageByOffset(requestHeader.getOffset());
         if (null == msgExt) {
             response.setCode(ResponseCode.SYSTEM_ERROR);
@@ -174,7 +174,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             return response;
         }
 
-        // 设置retryTopic到拓展属性（独有）
+        // 设置 PROPERTY_RETRY_TOPIC = 原始topic, 非 %RETRY%consumeGroup
         final String retryTopic = msgExt.getProperty(MessageConst.PROPERTY_RETRY_TOPIC);
         if (null == retryTopic) {
             MessageAccessor.putProperty(msgExt, MessageConst.PROPERTY_RETRY_TOPIC, msgExt.getTopic());
@@ -335,12 +335,9 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             }
             int reconsumeTimes = requestHeader.getReconsumeTimes() == null ? 0 : requestHeader.getReconsumeTimes();
             if (reconsumeTimes >= maxReconsumeTimes) { // 超过最大消费次数
-                newTopic = MixAll.getDLQTopic(groupName);
+                newTopic = MixAll.getDLQTopic(groupName);  // %DLQ%+groupName
                 queueIdInt = Math.abs(this.random.nextInt() % 99999999) % DLQ_NUMS_PER_GROUP;
-                topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(newTopic, //
-                    DLQ_NUMS_PER_GROUP, //
-                    PermName.PERM_WRITE, 0
-                );
+                topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(newTopic, DLQ_NUMS_PER_GROUP, PermName.PERM_WRITE, 0);
                 if (null == topicConfig) {
                     response.setCode(ResponseCode.SYSTEM_ERROR);
                     response.setRemark("topic[" + newTopic + "] not exist");
