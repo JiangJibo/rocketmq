@@ -174,7 +174,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             return response;
         }
 
-        // 设置 PROPERTY_RETRY_TOPIC = 原始topic, 非 %RETRY%consumeGroup
+        // 设置 PROPERTY_RETRY_TOPIC = 原始topic, 非 %RETRY%consumeGroup,msgInner通过setProperties()方法将原始消息的Properties拷贝过去
         final String retryTopic = msgExt.getProperty(MessageConst.PROPERTY_RETRY_TOPIC);
         if (null == retryTopic) {
             MessageAccessor.putProperty(msgExt, MessageConst.PROPERTY_RETRY_TOPIC, msgExt.getTopic());
@@ -209,12 +209,12 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             msgExt.setDelayTimeLevel(delayLevel);
         }
 
-        // 创建MessageExtBrokerInner
+        // 创建MessageExtBrokerInner ,这次存储的消息相比原始的消息仅仅topic,queueId有明显不同,其他的都拷贝原始消息的数据
         MessageExtBrokerInner msgInner = new MessageExtBrokerInner();
-        msgInner.setTopic(newTopic);
+        msgInner.setTopic(newTopic);                    //"%RETRY%+consumeGroup"
         msgInner.setBody(msgExt.getBody());
         msgInner.setFlag(msgExt.getFlag());
-        MessageAccessor.setProperties(msgInner, msgExt.getProperties());
+        MessageAccessor.setProperties(msgInner, msgExt.getProperties());                           //拷贝原始消息的Properties,包括PROPERTY_RETRY_TOPIC,PROPERTY_DELAY_TIME_LEVEL等
         msgInner.setPropertiesString(MessageDecoder.messageProperties2String(msgExt.getProperties()));
         msgInner.setTagsCode(MessageExtBrokerInner.tagsString2tagsCode(null, msgExt.getTags()));
         msgInner.setQueueId(queueIdInt);  //0
