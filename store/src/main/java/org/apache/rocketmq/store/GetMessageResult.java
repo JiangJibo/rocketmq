@@ -42,6 +42,7 @@ public class GetMessageResult {
 
     private int bufferTotalSize = 0;
 
+    //是否建议从Slave读取消息,当Master内存中积压了超过40%容量的未消费消息
     private boolean suggestPullingFromSlave = false;
 
     private int msgCount4Commercial = 0;

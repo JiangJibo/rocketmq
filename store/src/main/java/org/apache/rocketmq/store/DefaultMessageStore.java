@@ -367,12 +367,14 @@ public class DefaultMessageStore implements MessageStore {
 
     /**
      * 通过topic,queueId,offset从ConsumeQueue里获取新加入消息的消费信息,然后从CommitLog里提取消息
+     * 从ConsumeQueue里提取Message时会根据tagsCode过滤不符合的Message
+     * 提取的总数(32)条消息都是符合tag的
      *
      * @param group            消费分组
      * @param topic            主题
      * @param queueId          队列编号
      * @param offset           ConsumeQueue Offset
-     * @param maxMsgNums       消息数量
+     * @param maxMsgNums       消息数量  32
      * @param subscriptionData 订阅信息
      * @return 消息结果
      */
@@ -456,7 +458,7 @@ public class DefaultMessageStore implements MessageStore {
                             if (this.isTheBatchFull(sizePy, maxMsgNums, getResult.getBufferTotalSize(), getResult.getMessageCount(), isInDisk)) {
                                 break;
                             }
-                            // 判断消息是否符合条件
+                            // 判断消息是否在订阅的tag里
                             if (this.messageFilter.isMessageMatched(subscriptionData, tagsCode)) {
                                 // 从commitLog获取对应消息ByteBuffer
                                 SelectMappedBufferResult selectResult = this.commitLog.getMessage(offsetPy, sizePy);
@@ -494,6 +496,7 @@ public class DefaultMessageStore implements MessageStore {
                         // 配置的内存中可用来存储待拉取消息的大小,默认为总内存的40%
                         long memory = (long)(StoreUtil.TOTAL_PHYSICAL_MEMORY_SIZE * (this.messageStoreConfig.getAccessMessageInMemoryMaxRatio() / 100.0));
                         // 待拉取的消息已经超过了总内存的40%,也就是说已经积累了大量的消息未消费,
+                        // 有很多消息已经存储到CommitLog文件中,此时消息可能要从文件中读取,性能很低
                         // 从Master拉取的速度太慢了,可能是IO异常或者IO压力很大,建议从Slave拉取
                         getResult.setSuggestPullingFromSlave(diff > memory);
                     } finally {
@@ -1057,11 +1060,11 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     /**
-     * 下一个获取队列offset修正
-     * 修正条件：主节点 或者 从节点开启校验offset开关
+     * 是否要将oldOffset的值修正为newOffset
+     * 修正前提：主节点 或者 从节点开启校验offset开关
      *
-     * @param oldOffset 老队列offset
-     * @param newOffset 新队列offset
+     * @param oldOffset 查询时指定的起始Offset
+     * @param newOffset 实际的Offset值
      * @return 修正后的队列offset
      */
     private long nextOffsetCorrection(long oldOffset, long newOffset) {

@@ -128,7 +128,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
         final boolean hasSuspendFlag = PullSysFlag.hasSuspendFlag(requestHeader.getSysFlag()); // 是否挂起请求，当没有消息时
         final boolean hasCommitOffsetFlag = PullSysFlag.hasCommitOffsetFlag(requestHeader.getSysFlag()); // 是否提交消费进度
         final boolean hasSubscriptionFlag = PullSysFlag.hasSubscriptionFlag(requestHeader.getSysFlag()); // 是否过滤订阅表达式(subscription)
-        final long suspendTimeoutMillisLong = hasSuspendFlag ? requestHeader.getSuspendTimeoutMillis() : 0; // 请求被挂起时长 ,Push Consumer 设置 1000 * 15
+        final long suspendTimeoutMillisLong = hasSuspendFlag ? requestHeader.getSuspendTimeoutMillis() : 0; // 请求被挂起时长 ,Push Consumer 默认设置 1000 * 15
 
         // 校验 topic配置 存在
         TopicConfig topicConfig = this.brokerController.getTopicConfigManager().selectTopicConfig(requestHeader.getTopic());
@@ -212,7 +212,8 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             responseHeader.setMaxOffset(getMessageResult.getMaxOffset());
 
             // 待拉取的消息已经超过了总内存的40%,也就是说已经积累了大量的消息未消费,
-            // 从Master拉取的速度太慢了,可能是IO异常或者IO压力很大,建议从Slave拉取
+            // 有很多消息已经存储到CommitLog文件中,此时消息可能要从文件中读取,性能很低
+            // 从Master拉取的速度太慢了,可能是IO异常或者IO压力很大,建议从BrokerId = 1 的Slavea读取消息
             if (getMessageResult.isSuggestPullingFromSlave()) {
                 responseHeader.setSuggestWhichBrokerId(subscriptionGroupConfig.getWhichBrokerWhenConsumeSlowly());
             } else {
@@ -231,6 +232,9 @@ public class PullMessageProcessor implements NettyRequestProcessor {
                     break;
             }
 
+            //默认配置下Slave是不可读的,所以不会说Master消息堆积了就从Slave读取,
+            // 只有Master宕机了才会从Slave读取,Consumer获取TopicRouteData内的可用IP(Slave),直接拉取消息,这些设置都没发生用处
+            //若想要这种设置生效,指定slaveReadEnable = true
             if (this.brokerController.getBrokerConfig().isSlaveReadEnable()) {
                 // consume too slow ,redirect to another machine
                 if (getMessageResult.isSuggestPullingFromSlave()) {
@@ -379,7 +383,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
                 case ResponseCode.PULL_NOT_FOUND:
                     // 消息未查询到 && broker允许挂起请求 && 请求允许挂起
                     if (brokerAllowSuspend && hasSuspendFlag) {
-                        long pollingTimeMills = suspendTimeoutMillisLong;
+                        long pollingTimeMills = suspendTimeoutMillisLong;   //15S
                         if (!this.brokerController.getBrokerConfig().isLongPollingEnable()) {
                             pollingTimeMills = this.brokerController.getBrokerConfig().getShortPollingTimeMills();
                         }
@@ -389,6 +393,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
                         int queueId = requestHeader.getQueueId();
                         PullRequest pullRequest = new PullRequest(request, channel, pollingTimeMills,
                             this.brokerController.getMessageStore().now(), offset, subscriptionData);
+                        //将请求挂起,每5S根据ConsumerQueue的Offset位置决定是否要唤醒请求
                         this.brokerController.getPullRequestHoldService().suspendPullRequest(topic, queueId, pullRequest);
                         response = null;
                         break;

@@ -36,6 +36,7 @@ public class SubscriptionGroupConfig {
 
     private long brokerId = MixAll.MASTER_ID;
 
+    //默认情况下,当Master消费速度很慢时,建议从BrokerId = 1 的Slave读取消息
     private long whichBrokerWhenConsumeSlowly = 1;
 
     private boolean notifyConsumerIdsChangedEnable = true;
