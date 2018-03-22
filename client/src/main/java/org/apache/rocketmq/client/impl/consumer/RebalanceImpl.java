@@ -316,14 +316,9 @@ public abstract class RebalanceImpl {
                     // 根据 队列分配策略 分配消费队列
                     List<MessageQueue> allocateResult;
                     try {
-                        allocateResult = strategy.allocate(//
-                            this.consumerGroup, //
-                            this.mQClientFactory.getClientId(), //
-                            mqAll, //
-                            cidAll);
+                        allocateResult = strategy.allocate(this.consumerGroup, this.mQClientFactory.getClientId(), mqAll, cidAll);
                     } catch (Throwable e) {
-                        log.error("AllocateMessageQueueStrategy.allocate Exception. allocateMessageQueueStrategyName={}", strategy.getName(),
-                            e);
+                        log.error("AllocateMessageQueueStrategy.allocate Exception. allocateMessageQueueStrategyName={}", strategy.getName(), e);
                         return;
                     }
 
@@ -371,7 +366,7 @@ public abstract class RebalanceImpl {
      * 当负载均衡时,依据从Namesrv获取到的最新的{@link TopicRouteData}更新{@link #processQueueTable}里的 : MessageQueue => ProcessQueue
      * 若Broker或者Consumer有变化,新增了或者宕机了:
      * - 移除 在processQueueTable && 不存在于 mqSet 里的消息队列
-     * - 增加 不在processQueueTable && 存在于mqSet 里的消息队列
+     * - 增加 不在processQueueTable && 存在于 mqSet 里的消息队列
      * - 发起对新的MessageQueue的消费请求
      *
      * @param topic   Topic
@@ -401,7 +396,7 @@ public abstract class RebalanceImpl {
                     switch (this.consumeType()) {
                         case CONSUME_ACTIVELY:
                             break;
-                        case CONSUME_PASSIVELY:
+                        case CONSUME_PASSIVELY:  //Push形式
                             pq.setDropped(true);
                             if (this.removeUnnecessaryMessageQueue(mq, pq)) {
                                 it.remove();

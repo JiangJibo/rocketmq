@@ -595,7 +595,7 @@ public class MQClientInstance {
 
     /**
      * 更新单个 Topic 路由信息
-     * 如 isDefault=true && defaultMQProducer!=null 时，使用{@link DefaultMQProducer#createTopicKey}
+     * 若 isDefault=true && defaultMQProducer!=null 时，使用{@link DefaultMQProducer#createTopicKey}
      *
      * @param topic             Topic
      * @param isDefault         是否默认
@@ -1094,6 +1094,7 @@ public class MQClientInstance {
             found = brokerAddr != null;
 
             // 如果不强制获得，选择一个Broker
+            // 此处是实现主从切换的关键,当Master宕机时,从剩下可用的Broker按顺序读取一个,Long的HashCode是有序的
             if (!found && !onlyThisBroker) {
                 Entry<Long, String> entry = map.entrySet().iterator().next();
                 brokerAddr = entry.getValue();

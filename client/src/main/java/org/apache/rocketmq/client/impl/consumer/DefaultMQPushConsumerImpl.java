@@ -262,7 +262,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
             return;
         }
 
-        if (!this.consumeOrderly) { // 判断消息跨度是否过大。
+        if (!this.consumeOrderly) { // 判断消息Offset跨度是否过大 > 2000
             if (processQueue.getMaxSpan() > this.defaultMQPushConsumer.getConsumeConcurrentlyMaxSpan()) {
                 this.executePullRequestLater(pullRequest, PULL_TIME_DELAY_MILLS_WHEN_FLOW_CONTROL); // 提交延迟消息拉取请求。50ms。
                 if ((flowControlTimes2++ % 1000) == 0) {
@@ -311,6 +311,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
             @Override
             public void onSuccess(PullResult pullResult) {
                 if (pullResult != null) {
+                    //提取ByteBuffer生成List<MessageExt>
                     pullResult = DefaultMQPushConsumerImpl.this.pullAPIWrapper.processPullResult(pullRequest.getMessageQueue(), pullResult, subscriptionData);
                     switch (pullResult.getPullStatus()) {
                         case FOUND:
@@ -342,7 +343,8 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
 
                                 // 提交下次拉取消息请求
                                 if (DefaultMQPushConsumerImpl.this.defaultMQPushConsumer.getPullInterval() > 0) {
-                                    DefaultMQPushConsumerImpl.this.executePullRequestLater(pullRequest, DefaultMQPushConsumerImpl.this.defaultMQPushConsumer.getPullInterval());
+                                    DefaultMQPushConsumerImpl.this.executePullRequestLater(pullRequest,
+                                        DefaultMQPushConsumerImpl.this.defaultMQPushConsumer.getPullInterval());
                                 } else {
                                     DefaultMQPushConsumerImpl.this.executePullRequestImmediately(pullRequest);
                                 }
@@ -440,20 +442,14 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         boolean classFilter = false;
         SubscriptionData sd = this.rebalanceImpl.getSubscriptionInner().get(pullRequest.getMessageQueue().getTopic());
         if (sd != null) {
-            if (this.defaultMQPushConsumer.isPostSubscriptionWhenPull() && !sd.isClassFilterMode()) {
+            if (this.defaultMQPushConsumer.isPostSubscriptionWhenPull() && !sd.isClassFilterMode()) {  //默认否
                 subExpression = sd.getSubString();
             }
-
             classFilter = sd.isClassFilterMode();
         }
 
         // 计算拉取消息系统标识
-        int sysFlag = PullSysFlag.buildSysFlag(//
-            commitOffsetEnable, // commitOffset
-            true, // suspend
-            subExpression != null, // subscription
-            classFilter // class filter
-        );
+        int sysFlag = PullSysFlag.buildSysFlag(commitOffsetEnable, true, subExpression != null, classFilter);
 
         // 执行拉取。如果拉取请求发生异常时，提交延迟拉取消息请求。
         try {
@@ -707,7 +703,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         //  从Namesrv获取TopicRouteData,更新TopicPublishInfo和MessageQueue   （在Consumer start时马上调用，之后每隔一段时间调用一次）
         this.updateTopicSubscribeInfoWhenSubscriptionChanged();
 
-        // 向TopicRouteData里的所有Broker发送心跳,注册Consumer信息到Broker上   （在Consumer start时马上调用，之后每隔一段时间调用一次）
+        // 向TopicRouteData里的所有Broker发送心跳,注册Consumer/Producer信息到Broker上   （在Consumer start时马上调用，之后每隔一段时间调用一次）
         this.mQClientFactory.sendHeartbeatToAllBrokerWithLock();
 
         // 唤醒MessageQueue均衡服务,负载均衡后马上开启第一次拉取消息
@@ -894,7 +890,8 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                     break;
                 case CLUSTERING:
                     final String retryTopic = MixAll.getRetryTopic(this.defaultMQPushConsumer.getConsumerGroup());  //重试Topic：%RETRY% + consumerGroup
-                    SubscriptionData subscriptionData = FilterAPI.buildSubscriptionData(this.defaultMQPushConsumer.getConsumerGroup(), retryTopic, SubscriptionData.SUB_ALL);
+                    SubscriptionData subscriptionData = FilterAPI.buildSubscriptionData(this.defaultMQPushConsumer.getConsumerGroup(), retryTopic,
+                        SubscriptionData.SUB_ALL);
                     this.rebalanceImpl.getSubscriptionInner().put(retryTopic, subscriptionData);
                     break;
                 default:

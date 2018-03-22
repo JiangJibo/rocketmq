@@ -156,6 +156,16 @@ public class IndexService {
         }
     }
 
+    /**
+     * 根据条件查询消息的PhyOffset
+     *
+     * @param topic
+     * @param key
+     * @param maxNum 总共查多少条消息
+     * @param begin  起始时间
+     * @param end    结束时间
+     * @return
+     */
     public QueryOffsetResult queryOffset(String topic, String key, int maxNum, long begin, long end) {
         List<Long> phyOffsets = new ArrayList<Long>(maxNum);
 
@@ -165,20 +175,20 @@ public class IndexService {
         try {
             this.readWriteLock.readLock().lock();
             if (!this.indexFileList.isEmpty()) {
-                for (int i = this.indexFileList.size(); i > 0; i--) {
+                for (int i = this.indexFileList.size(); i > 0; i--) {    //按消息的存入顺序倒序查询
                     IndexFile f = this.indexFileList.get(i - 1);
                     boolean lastFile = i == this.indexFileList.size();
                     if (lastFile) {
-                        indexLastUpdateTimestamp = f.getEndTimestamp();
-                        indexLastUpdatePhyoffset = f.getEndPhyOffset();
+                        indexLastUpdateTimestamp = f.getEndTimestamp();   //索引的最后更新时间
+                        indexLastUpdatePhyoffset = f.getEndPhyOffset();   //最后一个索引的PhyOffset
                     }
 
-                    if (f.isTimeMatched(begin, end)) {
+                    if (f.isTimeMatched(begin, end)) {                    //索引文件的起始和终止时间与给定的时间有交集
 
                         f.selectPhyOffset(phyOffsets, buildKey(topic, key), maxNum, begin, end, lastFile);
                     }
 
-                    if (f.getBeginTimestamp() < begin) {
+                    if (f.getBeginTimestamp() < begin) {                  //这个索引文件之前(倒序)的消息的存储时间都在查询时间区间之前了
                         break;
                     }
 
@@ -239,7 +249,7 @@ public class IndexService {
                 for (int i = 0; i < keyset.length; i++) {
                     String key = keyset[i];
                     if (key.length() > 0) {
-                        indexFile = putKey(indexFile, msg, buildKey(topic, key));
+                        indexFile = putKey(indexFile, msg, buildKey(topic, key));  //key = topic#key
                         if (indexFile == null) {
                             log.error("putKey error commitlog {} uniqkey {}", req.getCommitLogOffset(), req.getUniqKey());
                             return;

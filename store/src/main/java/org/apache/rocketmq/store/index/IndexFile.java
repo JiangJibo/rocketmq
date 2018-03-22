@@ -187,6 +187,13 @@ public class IndexFile {
         return this.indexHeader.getEndPhyOffset();
     }
 
+    /**
+     * 索引文件的起始和终止时间与给定的时间有交集
+     *
+     * @param begin
+     * @param end
+     * @return
+     */
     public boolean isTimeMatched(final long begin, final long end) {
         boolean result = begin < this.indexHeader.getBeginTimestamp() && end > this.indexHeader.getEndTimestamp();
         result = result || (begin >= this.indexHeader.getBeginTimestamp() && begin <= this.indexHeader.getEndTimestamp());
@@ -194,6 +201,16 @@ public class IndexFile {
         return result;
     }
 
+    /**
+     * 提取符合key和topic的Message的PhyOffset
+     *
+     * @param phyOffsets
+     * @param key        topic#key
+     * @param maxNum
+     * @param begin
+     * @param end
+     * @param lock       查询最后一个indexFile时锁定,防止阻止其继续创建索引
+     */
     public void selectPhyOffset(final List<Long> phyOffsets, final String key, final int maxNum,
                                 final long begin, final long end, boolean lock) {
         if (this.mappedFile.hold()) {
@@ -208,7 +225,7 @@ public class IndexFile {
                     // hashSlotSize, true);
                 }
 
-                int slotValue = this.mappedByteBuffer.getInt(absSlotPos);
+                int slotValue = this.mappedByteBuffer.getInt(absSlotPos);  //index的序号
                 // if (fileLock != null) {
                 // fileLock.release();
                 // fileLock = null;
@@ -223,13 +240,9 @@ public class IndexFile {
                             break;
                         }
 
-                        int absIndexPos =
-                            IndexHeader.INDEX_HEADER_SIZE + this.hashSlotNum * hashSlotSize
-                                + nextIndexToRead * indexSize;
-
+                        int absIndexPos = IndexHeader.INDEX_HEADER_SIZE + this.hashSlotNum * hashSlotSize + nextIndexToRead * indexSize;
                         int keyHashRead = this.mappedByteBuffer.getInt(absIndexPos);
                         long phyOffsetRead = this.mappedByteBuffer.getLong(absIndexPos + 4);
-
                         long timeDiff = (long)this.mappedByteBuffer.getInt(absIndexPos + 4 + 8);
                         int prevIndexRead = this.mappedByteBuffer.getInt(absIndexPos + 4 + 8 + 4);
 
@@ -239,16 +252,15 @@ public class IndexFile {
 
                         timeDiff *= 1000L;
 
-                        long timeRead = this.indexHeader.getBeginTimestamp() + timeDiff;
+                        long timeRead = this.indexHeader.getBeginTimestamp() + timeDiff;  //消息存储时间 = beginTimestamp + timeDiff
                         boolean timeMatched = (timeRead >= begin) && (timeRead <= end);
 
                         if (keyHash == keyHashRead && timeMatched) {
                             phyOffsets.add(phyOffsetRead);
                         }
 
-                        if (prevIndexRead <= invalidIndex
-                            || prevIndexRead > this.indexHeader.getIndexCount()
-                            || prevIndexRead == nextIndexToRead || timeRead < begin) {
+                        if (prevIndexRead <= invalidIndex || prevIndexRead > this.indexHeader.getIndexCount() || prevIndexRead == nextIndexToRead
+                            || timeRead < begin) {
                             break;
                         }
 

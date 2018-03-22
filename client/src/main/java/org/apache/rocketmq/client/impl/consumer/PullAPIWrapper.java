@@ -253,8 +253,9 @@ public class PullAPIWrapper {
 
     /**
      * 重新计算消息队列拉取消息对应的Broker编号
-     * 这个方法就是实现主从切换的关键
-     * 当Master宕机时,返回slave的BrokerId : 1
+     * 若之前的请求返回了建议拉取的BrokerId,则使用此id
+     * 比如Master开启了 SlaveReadEnable=true ,且Master内存积压了大量未消费消息,
+     * 会返回id = 1,,也就是建议下次从BrokerId = 1 的Slave拉取消息, 但默认 SlaveReadEnable=false
      *
      * @param mq 消息队列
      * @return Broker编号

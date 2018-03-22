@@ -50,6 +50,10 @@ public class ProcessQueue {
      * Broker 消息队列分布式锁刷新时间，默认20s
      */
     public final static long REBALANCE_LOCK_INTERVAL = Long.parseLong(System.getProperty("rocketmq.client.rebalance.lockInterval", "20000"));
+
+    /**
+     * 拉取信息超时,默认120S
+     */
     private final static long PULL_MAX_IDLE_TIME = Long.parseLong(System.getProperty("rocketmq.client.pull.pullMaxIdleTime", "120000"));
 
     private final Logger log = ClientLogger.getLog();

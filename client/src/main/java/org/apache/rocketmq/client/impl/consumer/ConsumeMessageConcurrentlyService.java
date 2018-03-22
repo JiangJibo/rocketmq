@@ -322,7 +322,9 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
         int ackIndex = context.getAckIndex();
 
         // 消息为空，直接返回
-        if (consumeRequest.getMsgs().isEmpty()) { return; }
+        if (consumeRequest.getMsgs().isEmpty()) {
+            return;
+        }
 
         // 计算从consumeRequest.msgs[0]到consumeRequest.msgs[ackIndex]的消息消费成功
         switch (status) {
@@ -355,7 +357,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
                 }
                 break;
             case CLUSTERING:
-                // 发回失败消息到Broker。
+                // 发回失败消息到Broker,将失败线程内所有消息发回
                 List<MessageExt> msgBackFailed = new ArrayList<>(consumeRequest.getMsgs().size());
                 for (int i = ackIndex + 1; i < consumeRequest.getMsgs().size(); i++) {
                     MessageExt msg = consumeRequest.getMsgs().get(i);
