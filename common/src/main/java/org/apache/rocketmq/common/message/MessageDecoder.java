@@ -82,14 +82,14 @@ public class MessageDecoder {
         SocketAddress address;
         long offset;
 
-        byte[] ip = UtilAll.string2bytes(msgId.substring(0, 8));
-        byte[] port = UtilAll.string2bytes(msgId.substring(8, 16));
+        byte[] ip = UtilAll.string2bytes(msgId.substring(0, 8));        //前8个字节存ip
+        byte[] port = UtilAll.string2bytes(msgId.substring(8, 16));     //8-16字节存port
         ByteBuffer bb = ByteBuffer.wrap(port);
         int portInt = bb.getInt(0);
         address = new InetSocketAddress(InetAddress.getByAddress(ip), portInt);
 
         // offset
-        byte[] data = UtilAll.string2bytes(msgId.substring(16, 32));
+        byte[] data = UtilAll.string2bytes(msgId.substring(16, 32));    //16-32字节存offset
         bb = ByteBuffer.wrap(data);
         offset = bb.getLong(0);
 

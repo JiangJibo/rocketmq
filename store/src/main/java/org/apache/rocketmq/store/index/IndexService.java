@@ -162,8 +162,8 @@ public class IndexService {
      * @param topic
      * @param key
      * @param maxNum 总共查多少条消息
-     * @param begin  起始时间
-     * @param end    结束时间
+     * @param begin  消息存储起始时间
+     * @param end    消息存储结束时间
      * @return
      */
     public QueryOffsetResult queryOffset(String topic, String key, int maxNum, long begin, long end) {
