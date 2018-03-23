@@ -17,10 +17,13 @@
 package org.apache.rocketmq.broker.client;
 
 import io.netty.channel.Channel;
+
 import java.util.List;
+
 import org.apache.rocketmq.broker.BrokerController;
 
 public class DefaultConsumerIdsChangeListener implements ConsumerIdsChangeListener {
+
     private final BrokerController brokerController;
 
     public DefaultConsumerIdsChangeListener(BrokerController brokerController) {
@@ -29,6 +32,7 @@ public class DefaultConsumerIdsChangeListener implements ConsumerIdsChangeListen
 
     @Override
     public void consumerIdsChanged(String group, List<Channel> channels) {
+        //当指定消费者组还剩下消费者 && Broker有通知Consumer改变状况的义务
         if (channels != null && brokerController.getBrokerConfig().isNotifyConsumerIdsChangedEnable()) {
             for (Channel chl : channels) {
                 this.brokerController.getBroker2Client().notifyConsumerIdsChanged(chl, group);

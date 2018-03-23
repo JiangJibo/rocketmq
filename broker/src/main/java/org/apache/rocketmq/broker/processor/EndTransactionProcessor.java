@@ -37,7 +37,11 @@ import org.apache.rocketmq.store.PutMessageResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 事务结束处理器,只处理Commit/Rollback动作
+ */
 public class EndTransactionProcessor implements NettyRequestProcessor {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(LoggerName.TRANSACTION_LOGGER_NAME);
     private final BrokerController brokerController;
 
@@ -48,7 +52,7 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
     /**
      * 结束事务，提交/回滚消息
      *
-     * @param ctx ctx
+     * @param ctx     ctx
      * @param request 请求
      * @return 响应
      * @throws RemotingCommandException 当解析请求失败时
@@ -56,7 +60,7 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
     @Override
     public RemotingCommand processRequest(ChannelHandlerContext ctx, RemotingCommand request) throws RemotingCommandException {
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
-        final EndTransactionRequestHeader requestHeader = (EndTransactionRequestHeader) request.decodeCommandCustomHeader(EndTransactionRequestHeader.class);
+        final EndTransactionRequestHeader requestHeader = (EndTransactionRequestHeader)request.decodeCommandCustomHeader(EndTransactionRequestHeader.class);
 
         // 打印日志（只处理 COMMIT / ROLLBACK）
         if (requestHeader.getFromTransactionCheck()) {
@@ -177,7 +181,9 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
                     case MESSAGE_ILLEGAL:
                     case PROPERTIES_SIZE_EXCEEDED:
                         response.setCode(ResponseCode.MESSAGE_ILLEGAL);
-                        response.setRemark("the message is illegal, maybe msg body or properties length not matched. msg body length limit 128k, msg properties length limit 32k.");
+                        response.setRemark(
+                            "the message is illegal, maybe msg body or properties length not matched. msg body length limit 128k, msg properties length limit"
+                                + " 32k.");
                         break;
                     case SERVICE_NOT_AVAILABLE:
                         response.setCode(ResponseCode.SERVICE_NOT_AVAILABLE);

@@ -141,6 +141,7 @@ public class ClientManageProcessor implements NettyRequestProcessor {
             requestHeader.getClientID(),
             request.getLanguage(),
             request.getVersion());
+
         {
             final String group = requestHeader.getProducerGroup();
             if (group != null) {

@@ -502,7 +502,8 @@ public class RouteInfoManager {
     }
 
     /**
-     * 当超过2M没有心跳,关闭Broker的长连接,
+     * 当超过2M没有心跳或者是心跳连接断开,关闭Broker的长连接,
+     * 长时间没有发送心跳可能是应用出现问题,心跳断开可能是服务器IO出现问题
      * 移除相应的{@link #brokerLiveTable}
      * 移除{@link #brokerAddrTable}里相应{@link BrokerData#brokerAddrs}
      * 不移除{@link #topicQueueTable}里的QueueData,获取到的数据后要通过BrokerData来过滤QueueData
@@ -516,8 +517,7 @@ public class RouteInfoManager {
             try {
                 try {
                     this.lock.readLock().lockInterruptibly();
-                    Iterator<Entry<String, BrokerLiveInfo>> itBrokerLiveTable =
-                        this.brokerLiveTable.entrySet().iterator();
+                    Iterator<Entry<String, BrokerLiveInfo>> itBrokerLiveTable = this.brokerLiveTable.entrySet().iterator();
                     while (itBrokerLiveTable.hasNext()) {
                         Entry<String, BrokerLiveInfo> entry = itBrokerLiveTable.next();
                         if (entry.getValue().getChannel() == channel) {

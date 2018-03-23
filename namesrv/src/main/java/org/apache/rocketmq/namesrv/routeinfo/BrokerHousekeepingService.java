@@ -35,20 +35,44 @@ public class BrokerHousekeepingService implements ChannelEventListener {
         this.namesrvController = namesrvController;
     }
 
+    /**
+     * 当Broker连接到Namesrv
+     *
+     * @param remoteAddr
+     * @param channel
+     */
     @Override
     public void onChannelConnect(String remoteAddr, Channel channel) {
     }
 
+    /**
+     * 当Broker的心跳连接断开
+     *
+     * @param remoteAddr
+     * @param channel
+     */
     @Override
     public void onChannelClose(String remoteAddr, Channel channel) {
         this.namesrvController.getRouteInfoManager().onChannelDestroy(remoteAddr, channel);
     }
 
+    /**
+     * 当Broker的心跳连接出现异常
+     *
+     * @param remoteAddr
+     * @param channel
+     */
     @Override
     public void onChannelException(String remoteAddr, Channel channel) {
         this.namesrvController.getRouteInfoManager().onChannelDestroy(remoteAddr, channel);
     }
 
+    /**
+     * 当Broker的心跳连接空闲
+     *
+     * @param remoteAddr
+     * @param channel
+     */
     @Override
     public void onChannelIdle(String remoteAddr, Channel channel) {
         this.namesrvController.getRouteInfoManager().onChannelDestroy(remoteAddr, channel);

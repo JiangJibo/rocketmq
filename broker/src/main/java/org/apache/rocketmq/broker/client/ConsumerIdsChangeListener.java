@@ -17,8 +17,19 @@
 package org.apache.rocketmq.broker.client;
 
 import io.netty.channel.Channel;
+
 import java.util.List;
 
+/**
+ * 监听Consumer的改变
+ */
 public interface ConsumerIdsChangeListener {
+
+    /**
+     * 当Consumer发生改变时执行此方法
+     *
+     * @param group
+     * @param channels
+     */
     void consumerIdsChanged(final String group, final List<Channel> channels);
 }

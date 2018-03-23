@@ -104,6 +104,13 @@ public class ConsumerGroupInfo {
         }
     }
 
+    /**
+     * 移除断开心跳的Channel
+     *
+     * @param remoteAddr
+     * @param channel
+     * @return
+     */
     public boolean doChannelCloseEvent(final String remoteAddr, final Channel channel) {
         final ClientChannelInfo info = this.channelInfoTable.remove(channel);
         if (info != null) {

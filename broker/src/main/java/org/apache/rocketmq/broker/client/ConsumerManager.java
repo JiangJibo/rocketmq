@@ -75,6 +75,12 @@ public class ConsumerManager {
         return 0;
     }
 
+    /**
+     * 有Consumer断开心跳连接后处理事件
+     *
+     * @param remoteAddr
+     * @param channel
+     */
     public void doChannelCloseEvent(final String remoteAddr, final Channel channel) {
         Iterator<Entry<String, ConsumerGroupInfo>> it = this.consumerTable.entrySet().iterator();
         while (it.hasNext()) {
@@ -82,14 +88,14 @@ public class ConsumerManager {
             ConsumerGroupInfo info = next.getValue();
             boolean removed = info.doChannelCloseEvent(remoteAddr, channel);
             if (removed) {
-                if (info.getChannelInfoTable().isEmpty()) {
+                if (info.getChannelInfoTable().isEmpty()) {    //当某个ConsumerGroup已经不存在Channel,也就是不存在Consumer了,那么移除此ConsumerGroup
                     ConsumerGroupInfo remove = this.consumerTable.remove(next.getKey());
                     if (remove != null) {
                         log.info("unregister consumer ok, no any connection, and remove consumer group, {}",
                             next.getKey());
                     }
                 }
-
+                //通知指定ConsumerGroup剩下的所有Consumer
                 this.consumerIdsChangeListener.consumerIdsChanged(next.getKey(), info.getAllChannel());
             }
         }
