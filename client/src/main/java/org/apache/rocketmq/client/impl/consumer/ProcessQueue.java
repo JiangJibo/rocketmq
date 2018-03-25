@@ -149,7 +149,8 @@ public class ProcessQueue {
                 this.lockTreeMap.readLock().lockInterruptibly();
                 try {
                     if (!msgTreeMap.isEmpty() && System.currentTimeMillis() -
-                            Long.parseLong(MessageAccessor.getConsumeStartTimeStamp(msgTreeMap.firstEntry().getValue())) > pushConsumer.getConsumeTimeout() * 60 * 1000) {
+                        Long.parseLong(MessageAccessor.getConsumeStartTimeStamp(msgTreeMap.firstEntry().getValue()))
+                        > pushConsumer.getConsumeTimeout() * 60 * 1000) {
                         msg = msgTreeMap.firstEntry().getValue();
                     } else {
                         break;
@@ -356,10 +357,8 @@ public class ProcessQueue {
                 // 消费进度
                 Long offset = this.msgTreeMapTemp.lastKey();
 
-                //
                 msgCount.addAndGet(this.msgTreeMapTemp.size() * (-1));
 
-                //
                 this.msgTreeMapTemp.clear();
 
                 // 返回消费进度
@@ -377,7 +376,7 @@ public class ProcessQueue {
     }
 
     /**
-     * 指定消息重新消费
+     * 将{@link #msgTreeMapTemp}里的消息重新放回{@link #msgTreeMap},这样重新消费时就能再次消费这些消息
      * 逻辑类似于{@link #rollback()}
      *
      * @param msgs 消息
@@ -399,7 +398,10 @@ public class ProcessQueue {
     }
 
     /**
-     * 获得持有消息前N条
+     * 按顺序依次弹出TreeMap的第一条消息,直到凑满batchSize
+     * 弹出一条TreeMap就删除这条，然后重构
+     * 在弹出过程中会持有TreeMap的写锁,阻止TreeMap的写入
+     * 将得到的消息集合放入{@link #msgTreeMapTemp}
      *
      * @param batchSize 条数
      * @return 消息

@@ -17,14 +17,16 @@
 package org.apache.rocketmq.client.impl.consumer;
 
 import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.rocketmq.common.message.MessageQueue;
 
 /**
  * Message lock,strictly ensure the single queue only one thread at a time consuming
+ * MessageQueue锁，确保同一时间只有一个线程进行消息集合的消费,确保有序
  */
 public class MessageQueueLock {
-    private ConcurrentHashMap<MessageQueue, Object> mqLockTable =
-        new ConcurrentHashMap<MessageQueue, Object>();
+
+    private ConcurrentHashMap<MessageQueue, Object> mqLockTable = new ConcurrentHashMap<MessageQueue, Object>();
 
     public Object fetchLockObject(final MessageQueue mq) {
         Object objLock = this.mqLockTable.get(mq);
@@ -35,7 +37,6 @@ public class MessageQueueLock {
                 objLock = prevLock;
             }
         }
-
         return objLock;
     }
 }

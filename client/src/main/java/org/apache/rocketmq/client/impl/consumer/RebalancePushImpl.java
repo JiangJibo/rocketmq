@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class RebalancePushImpl extends RebalanceImpl {
+
     private final static long UNLOCK_DELAY_TIME_MILLS = Long.parseLong(System.getProperty("rocketmq.client.unlockDelayTimeMills", "20000"));
     /**
      * Consumer
@@ -44,7 +45,7 @@ public class RebalancePushImpl extends RebalanceImpl {
     }
 
     public RebalancePushImpl(String consumerGroup, MessageModel messageModel, AllocateMessageQueueStrategy allocateMessageQueueStrategy,
-        MQClientInstance mQClientFactory, DefaultMQPushConsumerImpl defaultMQPushConsumerImpl) {
+                             MQClientInstance mQClientFactory, DefaultMQPushConsumerImpl defaultMQPushConsumerImpl) {
         super(consumerGroup, messageModel, allocateMessageQueueStrategy, mQClientFactory);
         this.defaultMQPushConsumerImpl = defaultMQPushConsumerImpl;
     }
@@ -68,9 +69,10 @@ public class RebalancePushImpl extends RebalanceImpl {
         this.defaultMQPushConsumerImpl.getOffsetStore().persist(mq);
         this.defaultMQPushConsumerImpl.getOffsetStore().removeOffset(mq);
         // 集群模式下，顺序消费移除时，解锁对队列的锁定
-        if (this.defaultMQPushConsumerImpl.isConsumeOrderly()
-            && MessageModel.CLUSTERING.equals(this.defaultMQPushConsumerImpl.messageModel())) {
+        if (this.defaultMQPushConsumerImpl.isConsumeOrderly() && MessageModel.CLUSTERING.equals(this.defaultMQPushConsumerImpl.messageModel())) {
             try {
+                //有序消费模式下,ConsumeMessageOrderlyService在执行 MessageListenerOrderly#consumeMessage() 时会锁定ProcessQueue,执行此方法完后才会释放ProcessQueue的Lock,见 ConsumeMessageOrderlyService#518行
+                //锁定不成功说明还有消息在被消费,所以只能等待此MessageQueue在Broker的锁定时间过期后再被其他消费者锁定
                 if (pq.getLockConsume().tryLock(1000, TimeUnit.MILLISECONDS)) {
                     try {
                         return this.unlockDelay(mq, pq);
@@ -78,10 +80,7 @@ public class RebalancePushImpl extends RebalanceImpl {
                         pq.getLockConsume().unlock();
                     }
                 } else {
-                    log.warn("[WRONG]mq is consuming, so can not unlock it, {}. maybe hanged for a while, {}", //
-                        mq, //
-                        pq.getTryUnlockTimes());
-
+                    log.warn("[WRONG]mq is consuming, so can not unlock it, {}. maybe hanged for a while, {}", mq, pq.getTryUnlockTimes());
                     pq.incTryUnlockTimes();
                 }
             } catch (Exception e) {
@@ -96,13 +95,14 @@ public class RebalancePushImpl extends RebalanceImpl {
     /**
      * 延迟解锁 Broker 消息队列锁
      * 当消息处理队列不存在消息，则直接解锁
+     * 延迟的目的是为了等待消费完的消息做统计和失败处理等,同时发送消费进度给Broker
      *
      * @param mq 消息队列
      * @param pq 消息处理队列
      * @return 是否解锁成功
      */
     private boolean unlockDelay(final MessageQueue mq, final ProcessQueue pq) {
-        if (pq.hasTempMessage()) { // TODO 疑问：为什么要延迟移除
+        if (pq.hasTempMessage()) {
             log.info("[{}]unlockDelay, begin {} ", mq.hashCode(), mq);
             this.defaultMQPushConsumerImpl.getmQClientFactory().getScheduledExecutorService().schedule(new Runnable() {
                 @Override
