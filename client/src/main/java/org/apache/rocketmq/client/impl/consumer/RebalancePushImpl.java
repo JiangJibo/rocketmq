@@ -71,8 +71,10 @@ public class RebalancePushImpl extends RebalanceImpl {
         // 集群模式下，顺序消费移除时，解锁对队列的锁定
         if (this.defaultMQPushConsumerImpl.isConsumeOrderly() && MessageModel.CLUSTERING.equals(this.defaultMQPushConsumerImpl.messageModel())) {
             try {
-                //有序消费模式下,ConsumeMessageOrderlyService在执行 MessageListenerOrderly#consumeMessage() 时会锁定ProcessQueue,执行此方法完后才会释放ProcessQueue的Lock,见 ConsumeMessageOrderlyService#518行
-                //锁定不成功说明还有消息在被消费,所以只能等待此MessageQueue在Broker的锁定时间过期后再被其他消费者锁定
+                // 有序消费模式下,ConsumeMessageOrderlyService在执行 MessageListenerOrderly#consumeMessage() 时会锁定ProcessQueue,
+                // 执行此方法完后才会释放ProcessQueue的Lock,见ConsumeMessageOrderlyService#464 行
+                // 锁定不成功说明在长达1S的时间内一直都在执行 MessageListenerOrderly#consumeMessage 方法
+                // 也就是说 consumeMessage() 方法执行时间超过1S,每条消息的消费速度以及方法参数List<MessageExt>的大小可能存在问题
                 if (pq.getLockConsume().tryLock(1000, TimeUnit.MILLISECONDS)) {
                     try {
                         return this.unlockDelay(mq, pq);
@@ -93,9 +95,9 @@ public class RebalancePushImpl extends RebalanceImpl {
     }
 
     /**
-     * 延迟解锁 Broker 消息队列锁
-     * 当消息处理队列不存在消息，则直接解锁
-     * 延迟的目的是为了等待消费完的消息做统计和失败处理等,同时发送消费进度给Broker
+     * {@link ProcessQueue#hasTempMessage()}也就是{@link ProcessQueue#msgTreeMap}里有消息
+     * 因为已经设置了{@link ProcessQueue#dropped = true},所以不会再消费msgTreeMap里的剩余消息
+     * 但需要等待之前已消费消息的结果处理完,提交最后的消费进度等,最后才释放MessageQueue的分布式锁,延迟20S释放
      *
      * @param mq 消息队列
      * @param pq 消息处理队列

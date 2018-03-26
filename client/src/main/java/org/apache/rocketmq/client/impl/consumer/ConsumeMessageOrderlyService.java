@@ -179,11 +179,22 @@ public class ConsumeMessageOrderlyService implements ConsumeMessageService {
         return result;
     }
 
+    /**
+     * 当 dispathToConsume=true 时提交消费请求,不指定拉取的消息,仅指明MessageQueue,ProcessQueue
+     * 因此,这个消费请求会一直消费,直到{@link ProcessQueue#msgTreeMap}里没有消息
+     * 可能出现这种情况,消息消费的速度慢于拉取的速度,那么一个消费请求会一直持续消费
+     * 也就是一个线程一直维持着消费消息,不释放MessageQueue的{@link MessageQueueLock}锁
+     * 其他线程干瞪眼等待
+     *
+     * @param msgs
+     * @param processQueue
+     * @param messageQueue
+     * @param dispathToConsume
+     */
     @Override
-    public void submitConsumeRequest(//
-                                     final List<MessageExt> msgs, //
-                                     final ProcessQueue processQueue, //
-                                     final MessageQueue messageQueue, //
+    public void submitConsumeRequest(final List<MessageExt> msgs,
+                                     final ProcessQueue processQueue,
+                                     final MessageQueue messageQueue,
                                      final boolean dispathToConsume) {
         if (dispathToConsume) {
             ConsumeRequest consumeRequest = new ConsumeRequest(processQueue, messageQueue);
@@ -467,6 +478,7 @@ public class ConsumeMessageOrderlyService implements ConsumeMessageService {
                     final long beginTime = System.currentTimeMillis();
                     // 循环
                     for (boolean continueConsume = true; continueConsume; ) {
+                        //负载均衡后,当前MessageQueue不在属于自己,马上设置其ProcessQueue的dropped = true ,终止剩余消息的消费
                         if (this.processQueue.isDropped()) {
                             log.warn("the message queue not be able to consume, because it's dropped. {}", this.messageQueue);
                             break;
@@ -487,7 +499,7 @@ public class ConsumeMessageOrderlyService implements ConsumeMessageService {
                             break;
                         }
 
-                        // 当前周期消费时间超过连续时长，默认：60s，提交延迟消费请求。默认情况下，每消费1分钟休息10ms。
+                        // 当前轮次消费时间超过连续时长，默认：60s，提交延迟消费请求。默认情况下，每消费1分钟休息10ms。
                         long interval = System.currentTimeMillis() - beginTime;
                         if (interval > MAX_TIME_CONSUME_CONTINUOUSLY) {
                             ConsumeMessageOrderlyService.this.submitConsumeRequestLater(processQueue, messageQueue, 10);
@@ -523,7 +535,7 @@ public class ConsumeMessageOrderlyService implements ConsumeMessageService {
                             ConsumeReturnType returnType = ConsumeReturnType.SUCCESS;
                             boolean hasException = false;
                             try {
-                                this.processQueue.getLockConsume().lock(); // 锁定队列消费锁
+                                this.processQueue.getLockConsume().lock(); // 获取队列消费锁
 
                                 if (this.processQueue.isDropped()) {
                                     log.warn("consumeMessage, the message queue not be able to consume, because it's dropped. {}",
@@ -540,7 +552,7 @@ public class ConsumeMessageOrderlyService implements ConsumeMessageService {
                                     messageQueue);
                                 hasException = true;
                             } finally {
-                                this.processQueue.getLockConsume().unlock(); // 锁定队列消费锁
+                                this.processQueue.getLockConsume().unlock(); // 释放队列消费锁
                             }
 
                             if (null == status || ConsumeOrderlyStatus.ROLLBACK == status || ConsumeOrderlyStatus.SUSPEND_CURRENT_QUEUE_A_MOMENT == status) {

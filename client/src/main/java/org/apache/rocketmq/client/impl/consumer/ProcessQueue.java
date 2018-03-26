@@ -193,7 +193,8 @@ public class ProcessQueue {
 
     /**
      * 添加消息，并返回是否提交给消费者
-     * 返回true，当有新消息添加成功时，
+     * 返回true，表示上一批次的Message已经消费完了,
+     * ${@link #consuming}的值在${@link #takeMessags(int)}里修改,也就是有序消费时会重置${@link #consuming = false}
      *
      * @param msgs 消息
      * @return 是否提交给消费者
@@ -214,7 +215,7 @@ public class ProcessQueue {
                 }
                 msgCount.addAndGet(validMsgCnt);
 
-                // 计算是否正在消费
+                // 计算是否正在消费, 上一批次的消息是否消费完 consuming=true：还没完; consuming=false: 消费完了
                 if (!msgTreeMap.isEmpty() && !this.consuming) {
                     dispatchToConsume = true;
                     this.consuming = true;
@@ -399,9 +400,9 @@ public class ProcessQueue {
 
     /**
      * 按顺序依次弹出TreeMap的第一条消息,直到凑满batchSize
-     * 弹出一条TreeMap就删除这条，然后重构
-     * 在弹出过程中会持有TreeMap的写锁,阻止TreeMap的写入
+     * 弹出一条TreeMap就删除这条，然后重构,在弹出过程中会持有TreeMap的写锁,阻止TreeMap的写入
      * 将得到的消息集合放入{@link #msgTreeMapTemp}
+     * 当msgTreeMap里面没有消息时,重置{@link #consuming = false},也就是说现有的消息都消费完了
      *
      * @param batchSize 条数
      * @return 消息
@@ -424,7 +425,7 @@ public class ProcessQueue {
                         }
                     }
                 }
-
+                //标识ProcessQueue里的msgTreeMap已经没有消息了,上一次拉取的消息已经消费完了
                 if (result.isEmpty()) {
                     consuming = false;
                 }

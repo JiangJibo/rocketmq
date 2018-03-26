@@ -335,9 +335,12 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                                     pullRequest.getMessageQueue().getTopic(), pullResult.getMsgFoundList().size());
 
                                 // 提交拉取到的消息到ProcessQueue的TreeMap中
+                                //返回 true : 上一批次的消息已经消费完了
+                                //返回 false: 上一批次的消息还没消费完
                                 boolean dispathToConsume = processQueue.putMessage(pullResult.getMsgFoundList());
 
-                                // 提交消费请求
+                                // 在有序消费模式下,仅当 dispathToConsume=true 时提交消费请求,也就是上一批次的消息消费完了才提交消费请求
+                                // 在并发消费模式下,dispathToConsume不起作用,直接提交消费请求
                                 DefaultMQPushConsumerImpl.this.consumeMessageService
                                     .submitConsumeRequest(pullResult.getMsgFoundList(), processQueue, pullRequest.getMessageQueue(), dispathToConsume);
 
@@ -353,9 +356,9 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                             // 下次拉取消费队列位置小于上次拉取消息队列位置 或者 第一条消息的消费队列位置小于上次拉取消息队列位置，则判定为BUG，输出log
                             if (pullResult.getNextBeginOffset() < prevRequestOffset || firstMsgOffset < prevRequestOffset) {
                                 log.warn(
-                                    "[BUG] pull message result maybe data wrong, nextBeginOffset: {} firstMsgOffset: {} prevRequestOffset: {}", //
-                                    pullResult.getNextBeginOffset(), //
-                                    firstMsgOffset, //
+                                    "[BUG] pull message result maybe data wrong, nextBeginOffset: {} firstMsgOffset: {} prevRequestOffset: {}",
+                                    pullResult.getNextBeginOffset(),
+                                    firstMsgOffset,
                                     prevRequestOffset);
                             }
 
