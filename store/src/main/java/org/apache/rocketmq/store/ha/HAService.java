@@ -229,6 +229,7 @@ public class HAService {
                             if ((k.readyOps() & SelectionKey.OP_ACCEPT) != 0) {
                                 SocketChannel sc = ((ServerSocketChannel)k.channel()).accept();
 
+                                //接收到Slave的请求,生成一个HAConnection,用户向Channle写数据以及读取Slave传过来的数据
                                 if (sc != null) {
                                     HAService.log.info("HAService receive new connection, "
                                         + sc.socket().getRemoteSocketAddress());
@@ -369,7 +370,7 @@ public class HAService {
          */
         private int dispatchPostion = 0;
         /**
-         * 读取数据字节缓冲区,缓冲区大小默认4KB
+         * 读取数据字节缓冲区,缓冲区大小默认4MB
          */
         private ByteBuffer byteBufferRead = ByteBuffer.allocate(READ_MAX_BUFFER_SIZE);
         /**

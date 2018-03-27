@@ -30,6 +30,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
 public class HAConnection {
+
     private static final Logger log = LoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private final HAService haService;
     private final SocketChannel socketChannel;
@@ -54,6 +55,10 @@ public class HAConnection {
         this.haService.getConnectionCount().incrementAndGet();
     }
 
+    /**
+     * 启动{@link #readSocketService}读取Slave传过来的数据
+     * 启动{@link #writeSocketService}向Channel写入消息,同步给Slave
+     */
     public void start() {
         this.readSocketService.start();
         this.writeSocketService.start();
@@ -83,6 +88,7 @@ public class HAConnection {
      * 读取线程服务
      */
     class ReadSocketService extends ServiceThread {
+
         private static final int READ_MAX_BUFFER_SIZE = 1024 * 1024;
         private final Selector selector;
         private final SocketChannel socketChannel;
@@ -218,6 +224,7 @@ public class HAConnection {
      * 写入线程服务
      */
     class WriteSocketService extends ServiceThread {
+
         private final Selector selector;
         private final SocketChannel socketChannel;
 
@@ -225,7 +232,7 @@ public class HAConnection {
         private final ByteBuffer byteBufferHeader = ByteBuffer.allocate(headerSize);
 
         /**
-         * CommitLog读取开始位置
+         * Slave下一次同步CommigLog的Offset
          */
         private long nextTransferFromWhere = -1;
         /**
@@ -260,9 +267,12 @@ public class HAConnection {
 
                     // 计算初始化nextTransferFromWhere
                     if (-1 == this.nextTransferFromWhere) {
+                        //Slave第一次请求
                         if (0 == HAConnection.this.slaveRequestOffset) {
                             long masterOffset = HAConnection.this.haService.getDefaultMessageStore().getCommitLog().getMaxOffset();
-                            masterOffset = masterOffset - (masterOffset % HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig().getMapedFileSizeCommitLog());
+                            //从lastMappedFile的0位开始,也就是会忽略之前的MappedFile,只从最后一个文件开始同步
+                            masterOffset = masterOffset - (masterOffset % HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig()
+                                .getMapedFileSizeCommitLog());
                             if (masterOffset < 0) {
                                 masterOffset = 0;
                             }
@@ -278,23 +288,25 @@ public class HAConnection {
 
                     if (this.lastWriteOver) {
                         long interval = HAConnection.this.haService.getDefaultMessageStore().getSystemClock().now() - this.lastWriteTimestamp;
-                        if (interval > HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig().getHaSendHeartbeatInterval()) { // 心跳
-
+                        //如果距离上次同步超过5S
+                        if (interval > HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig().getHaSendHeartbeatInterval()) {
                             // Build Header
                             this.byteBufferHeader.position(0);
-                            this.byteBufferHeader.limit(headerSize);
-                            this.byteBufferHeader.putLong(this.nextTransferFromWhere);
+                            this.byteBufferHeader.limit(headerSize);                 //头部大小12字节,前8 Offset ; 后4 是 totalSize
+                            this.byteBufferHeader.putLong(this.nextTransferFromWhere);    //将同步的CommitLog的Offset存入
                             this.byteBufferHeader.putInt(0);
                             this.byteBufferHeader.flip();
 
                             this.lastWriteOver = this.transferData();
-                            if (!this.lastWriteOver)
+                            if (!this.lastWriteOver) {
                                 continue;
+                            }
                         }
                     } else { // 未传输完成，继续传输
                         this.lastWriteOver = this.transferData();
-                        if (!this.lastWriteOver)
+                        if (!this.lastWriteOver) {
                             continue;
+                        }
                     }
 
                     // 选择新的CommitLog内容进行传输
