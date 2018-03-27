@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * 高可用服务
  */
 public class HAService {
+
     private static final Logger log = LoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
     private final AtomicInteger connectionCount = new AtomicInteger(0);
@@ -66,6 +67,11 @@ public class HAService {
         this.haClient = new HAClient();
     }
 
+    /**
+     * BrokerController#initialize() 时,如果发现当前角色是Slave,则将haMasterAddress的值更新到haClient中
+     *
+     * @param newAddr
+     */
     public void updateMasterAddress(final String newAddr) {
         if (this.haClient != null) {
             this.haClient.updateMasterAddress(newAddr);
@@ -164,10 +170,16 @@ public class HAService {
      * Listens to slave connections to create {@link HAConnection}.
      */
     class AcceptSocketService extends ServiceThread {
+
         private final SocketAddress socketAddressListen;
         private ServerSocketChannel serverSocketChannel;
         private Selector selector;
 
+        /**
+         * port ：监听Slave请求的端口, 10912
+         *
+         * @param port
+         */
         public AcceptSocketService(final int port) {
             this.socketAddressListen = new InetSocketAddress(port);
         }
@@ -186,7 +198,9 @@ public class HAService {
             this.serverSocketChannel.register(this.selector, SelectionKey.OP_ACCEPT);
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void shutdown(final boolean interrupt) {
             super.shutdown(interrupt);
@@ -198,7 +212,9 @@ public class HAService {
             }
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void run() {
             log.info(this.getServiceName() + " service started");
@@ -211,7 +227,7 @@ public class HAService {
                     if (selected != null) {
                         for (SelectionKey k : selected) {
                             if ((k.readyOps() & SelectionKey.OP_ACCEPT) != 0) {
-                                SocketChannel sc = ((ServerSocketChannel) k.channel()).accept();
+                                SocketChannel sc = ((ServerSocketChannel)k.channel()).accept();
 
                                 if (sc != null) {
                                     HAService.log.info("HAService receive new connection, "
@@ -241,7 +257,9 @@ public class HAService {
             log.info(this.getServiceName() + " service end");
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public String getServiceName() {
             return AcceptSocketService.class.getSimpleName();
@@ -330,6 +348,7 @@ public class HAService {
     }
 
     class HAClient extends ServiceThread {
+
         private static final int READ_MAX_BUFFER_SIZE = 1024 * 1024 * 4;
         /**
          * Master节点地址
@@ -350,12 +369,12 @@ public class HAService {
          */
         private int dispatchPostion = 0;
         /**
-         * 读取数据字节缓冲区
+         * 读取数据字节缓冲区,缓冲区大小默认4KB
          */
         private ByteBuffer byteBufferRead = ByteBuffer.allocate(READ_MAX_BUFFER_SIZE);
         /**
          * 读取数据字节缓冲区备份
-         * 当{@link #byteBufferRead}写入已满时，未处理完内容放到改变量{@link #reallocateByteBuffer()}
+         * 当{@link #byteBufferRead}写入已满时，未处理完内容放到该变量{@link #reallocateByteBuffer()}
          */
         private ByteBuffer byteBufferBackup = ByteBuffer.allocate(READ_MAX_BUFFER_SIZE);
 
@@ -378,6 +397,7 @@ public class HAService {
 
         /**
          * 是否满足上报进度的时间
+         * 距离上一次上报进度时间超过5S , 也就是每5S上报一次进度
          *
          * @return 是否
          */
@@ -451,12 +471,19 @@ public class HAService {
             this.byteBufferBackup = tmp;
         }
 
+        /**
+         * 处理从Master读取到数据的事件
+         *
+         * @return
+         */
         private boolean processReadEvent() {
             int readSizeZeroTimes = 0;
-            while (this.byteBufferRead.hasRemaining()) {
+            while (this.byteBufferRead.hasRemaining()) {     // byteBufferRead 还没有写满
                 try {
+                    //将从Master处通过SocketChannel获取到的数据写入 byteBufferRead,返回写入的字节数量
                     int readSize = this.socketChannel.read(this.byteBufferRead);
                     if (readSize > 0) {
+                        //更新最近写入时间
                         lastWriteTimestamp = HAService.this.defaultMessageStore.getSystemClock().now();
 
                         readSizeZeroTimes = 0;
@@ -485,11 +512,11 @@ public class HAService {
         }
 
         /**
-         * 读取Master传输的CommitLog数据，并返回是异常
+         * 读取Master传输的CommitLog数据，并返回是否异常
          * 如果读取到数据，写入CommitLog
          * 异常原因：
-         *   1. Master传输来的数据offset 不等于 Slave的CommitLog数据最大offset
-         *   2. 上报到Master进度失败
+         * 1. Master传输来的数据offset 不等于 Slave的CommitLog数据最大offset
+         * 2. 上报到Master进度失败
          *
          * @return 是否异常
          */
@@ -507,6 +534,7 @@ public class HAService {
                     // 校验 Master传输来的数据offset 是否和 Slave的CommitLog数据最大offset 是否相同。
                     long slavePhyOffset = HAService.this.defaultMessageStore.getMaxPhyOffset();
                     if (slavePhyOffset != 0) {
+                        //数据中断了,Slave的最大Offset匹配不上推送过来的Offset
                         if (slavePhyOffset != masterPhyOffset) {
                             log.error("master pushed offset not equal the max phy offset in slave, SLAVE: "
                                 + slavePhyOffset + " MASTER: " + masterPhyOffset);
@@ -566,14 +594,15 @@ public class HAService {
 
         /**
          * 连接Master节点
+         *
          * @return 是否连接成功
          * @throws ClosedChannelException 当注册读事件失败时
          */
         private boolean connectMaster() throws ClosedChannelException {
             if (null == socketChannel) {
                 String addr = this.masterAddress.get();
+                //当自身角色是Slave时,会将配置中的MessageStoreConfig中的haMasterAdress赋值给masterAddress
                 if (addr != null) {
-
                     SocketAddress socketAddress = RemotingUtil.string2SocketAddress(addr);
                     if (socketAddress != null) {
                         this.socketChannel = RemotingUtil.connect(socketAddress); // 连接Master节点。如果连接失败，直接关闭，不抛出异常。
@@ -582,9 +611,9 @@ public class HAService {
                         }
                     }
                 }
-
+                //更新最近上报Offset
                 this.currentReportedOffset = HAService.this.defaultMessageStore.getMaxPhyOffset();
-
+                //更新最近写入时间
                 this.lastWriteTimestamp = System.currentTimeMillis();
             }
 
@@ -627,8 +656,9 @@ public class HAService {
 
             while (!this.isStopped()) {
                 try {
+                    //当存在masterAdress != null && 连接Master成功
                     if (this.connectMaster()) {
-                        // 若到满足上报间隔，上报到Master进度
+                        // 若到满足上报间隔(5S)，上报到Master进度
                         if (this.isTimeToReportOffset()) {
                             boolean result = this.reportSlaveMaxOffset(this.currentReportedOffset);
                             if (!result) {
