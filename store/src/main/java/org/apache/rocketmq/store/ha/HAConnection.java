@@ -127,6 +127,7 @@ public class HAConnection {
 
                     // 过长时间无心跳，断开连接
                     long interval = HAConnection.this.haService.getDefaultMessageStore().getSystemClock().now() - this.lastReadTimestamp;
+                    //超过20S时间没有收到Slave传递的消息,断开Slave连接
                     if (interval > HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig().getHaHousekeepingInterval()) {
                         log.warn("ha housekeeping, found this connection[" + HAConnection.this.clientAddr + "] expired, " + interval);
                         break;
@@ -169,7 +170,7 @@ public class HAConnection {
         private boolean processReadEvent() {
             int readSizeZeroTimes = 0;
 
-            // 清空byteBufferRead
+            // 重置读取缓冲区以及processPosition
             if (!this.byteBufferRead.hasRemaining()) {
                 this.byteBufferRead.flip();
                 this.processPostion = 0;
@@ -186,14 +187,17 @@ public class HAConnection {
 
                         if ((this.byteBufferRead.position() - this.processPostion) >= 8) {
                             // 读取Slave 请求来的CommitLog的最大位置
+                            // position减去8的余数,这么做也是是为了防止流传输数据的粘包问题
                             int pos = this.byteBufferRead.position() - (this.byteBufferRead.position() % 8);
+                            // 读取ByteBuffer中position内最大的8字节的倍数,比如 position = 571,则 571-(571%8)= 571-3 = 568
+                            // 也就是读取 560-568位置的字节,因为Slave可能发送了多个进度过来,Master只读最末尾也就是最大的那个
                             long readOffset = this.byteBufferRead.getLong(pos - 8);
                             this.processPostion = pos;
 
                             // 设置Slave CommitLog的最大位置
                             HAConnection.this.slaveAckOffset = readOffset;
 
-                            // 设置Slave 第一次请求的位置
+                            // 设置Slave 第一次请求的位置,初始化 slaveRequestOffset = 0
                             if (HAConnection.this.slaveRequestOffset < 0) {
                                 HAConnection.this.slaveRequestOffset = readOffset;
                                 log.info("slave[" + HAConnection.this.clientAddr + "] request offset " + readOffset);
@@ -259,7 +263,7 @@ public class HAConnection {
                 try {
                     this.selector.select(1000);
 
-                    // 未获得Slave读取进度请求，sleep等待。
+                    // 从未获得Slave读取进度请求，sleep等待。Slave第一次请求时会将初始化 slaveRequestOffset = 0
                     if (-1 == HAConnection.this.slaveRequestOffset) {
                         Thread.sleep(10);
                         continue;
@@ -288,12 +292,12 @@ public class HAConnection {
 
                     if (this.lastWriteOver) {
                         long interval = HAConnection.this.haService.getDefaultMessageStore().getSystemClock().now() - this.lastWriteTimestamp;
-                        //如果距离上次同步超过5S
+                        //如果距离上次同步(写数据给Slave)超过5S
                         if (interval > HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig().getHaSendHeartbeatInterval()) {
                             // Build Header
                             this.byteBufferHeader.position(0);
-                            this.byteBufferHeader.limit(headerSize);                 //头部大小12字节,前8 Offset ; 后4 是 totalSize
-                            this.byteBufferHeader.putLong(this.nextTransferFromWhere);    //将同步的CommitLog的Offset存入
+                            this.byteBufferHeader.limit(headerSize);
+                            this.byteBufferHeader.putLong(this.nextTransferFromWhere);
                             this.byteBufferHeader.putInt(0);
                             this.byteBufferHeader.flip();
 
@@ -314,22 +318,23 @@ public class HAConnection {
                         HAConnection.this.haService.getDefaultMessageStore().getCommitLogData(this.nextTransferFromWhere);
                     if (selectResult != null) {
                         int size = selectResult.getSize();
+                        //一次最多同步传输32KB
                         if (size > HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig().getHaTransferBatchSize()) {
                             size = HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig().getHaTransferBatchSize();
                         }
 
                         long thisOffset = this.nextTransferFromWhere;
-                        this.nextTransferFromWhere += size;
+                        this.nextTransferFromWhere += size;   //更新下次同步的起始位置
 
                         selectResult.getByteBuffer().limit(size);
                         this.selectMappedBufferResult = selectResult;
 
                         // Build Header
                         this.byteBufferHeader.position(0);
-                        this.byteBufferHeader.limit(headerSize);
-                        this.byteBufferHeader.putLong(thisOffset);
-                        this.byteBufferHeader.putInt(size);
-                        this.byteBufferHeader.flip();
+                        this.byteBufferHeader.limit(headerSize);    // 头部大小12字节,前8 Offset ; 后4 是 totalSize
+                        this.byteBufferHeader.putLong(thisOffset);  // 将同步的CommitLog的Offset存入
+                        this.byteBufferHeader.putInt(size);         // 将同步的数据size存入
+                        this.byteBufferHeader.flip();  //转为写模式
 
                         this.lastWriteOver = this.transferData();
                     } else { // 没新的消息，挂起等待
