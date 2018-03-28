@@ -403,14 +403,12 @@ public class HAService {
          * @return 是否
          */
         private boolean isTimeToReportOffset() {
-            long interval =
-                HAService.this.defaultMessageStore.getSystemClock().now() - this.lastWriteTimestamp;
-            return interval > HAService.this.defaultMessageStore.getMessageStoreConfig()
-                .getHaSendHeartbeatInterval();
+            long interval = HAService.this.defaultMessageStore.getSystemClock().now() - this.lastWriteTimestamp;
+            return interval > HAService.this.defaultMessageStore.getMessageStoreConfig().getHaSendHeartbeatInterval();
         }
 
         /**
-         * 上报进度
+         * 上报进度,传递进度的时候仅传递一个Long类型的Offset,8个字节,没有其他数据
          *
          * @param maxOffset 进度
          * @return 是否上报成功
@@ -479,7 +477,7 @@ public class HAService {
          */
         private boolean processReadEvent() {
             int readSizeZeroTimes = 0;
-            while (this.byteBufferRead.hasRemaining()) {     // byteBufferRead 还没有写满
+            while (this.byteBufferRead.hasRemaining()) {     // byteBufferRead 还没有读满
                 try {
                     //将从Master处通过SocketChannel获取到的数据写入 byteBufferRead,返回写入的字节数量
                     int readSize = this.socketChannel.read(this.byteBufferRead);
@@ -612,7 +610,7 @@ public class HAService {
                         }
                     }
                 }
-                //更新最近上报Offset
+                //更新最近上报Offset,也就是当前CommitLog的maxOffset
                 this.currentReportedOffset = HAService.this.defaultMessageStore.getMaxPhyOffset();
                 //更新最近写入时间
                 this.lastWriteTimestamp = System.currentTimeMillis();
@@ -666,7 +664,7 @@ public class HAService {
                                 this.closeMaster();
                             }
                         }
-
+                        //最多阻塞1S,直到Master有数据同步于过来。若1S满了还是没有接受到数据,则读入byteBufferRead的大小为0,然后循环到这步
                         this.selector.select(1000);
 
                         // 处理读取事件

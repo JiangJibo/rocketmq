@@ -118,6 +118,8 @@ public class HAConnection {
 
             while (!this.isStopped()) {
                 try {
+                    //最多阻塞1S钟,当有一个Channel准备好I/O请求时，立即中断阻塞
+                    //若1S时间内也没有Channel准备好I/O请求,则processReadEvent()会立即返回true,然后再次阻塞,循环如此
                     this.selector.select(1000);
                     boolean ok = this.processReadEvent();
                     if (!ok) {
@@ -178,13 +180,14 @@ public class HAConnection {
 
             while (this.byteBufferRead.hasRemaining()) {
                 try {
+                    //从Channel里读取数据,可能Slave没有发送过来进度
                     int readSize = this.socketChannel.read(this.byteBufferRead);
                     if (readSize > 0) {
                         readSizeZeroTimes = 0;
 
                         // 设置最后读取时间
                         this.lastReadTimestamp = HAConnection.this.haService.getDefaultMessageStore().getSystemClock().now();
-
+                        //传递过来的数据大于8字节,有效的同步,8个字节代表着有一个有效的CommitLog Offset
                         if ((this.byteBufferRead.position() - this.processPostion) >= 8) {
                             // 读取Slave 请求来的CommitLog的最大位置
                             // position减去8的余数,这么做也是是为了防止流传输数据的粘包问题
@@ -207,7 +210,7 @@ public class HAConnection {
                             HAConnection.this.haService.notifyTransferSome(HAConnection.this.slaveAckOffset);
                         }
                     } else if (readSize == 0) {
-                        if (++readSizeZeroTimes >= 3) {
+                        if (++readSizeZeroTimes >= 3) {  //连续读取3此没有数据,break,返回true,休眠
                             break;
                         }
                     } else {
@@ -263,7 +266,7 @@ public class HAConnection {
                 try {
                     this.selector.select(1000);
 
-                    // 从未获得Slave读取进度请求，sleep等待。Slave第一次请求时会将初始化 slaveRequestOffset = 0
+                    // 从未获得Slave读取进度请求，sleep等待。Slave第一次请求时会将初始化 slaveRequestOffset = Slave原始进度,可能为0,也可能是宕机重启,大于0
                     if (-1 == HAConnection.this.slaveRequestOffset) {
                         Thread.sleep(10);
                         continue;
@@ -292,7 +295,7 @@ public class HAConnection {
 
                     if (this.lastWriteOver) {
                         long interval = HAConnection.this.haService.getDefaultMessageStore().getSystemClock().now() - this.lastWriteTimestamp;
-                        //如果距离上次同步(写数据给Slave)超过5S
+                        //如果距离上次同步(写数据给Slave)超过5S,也就是5S内没有新的消息,发送一个空包过去,就是没有实际数据的
                         if (interval > HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig().getHaSendHeartbeatInterval()) {
                             // Build Header
                             this.byteBufferHeader.position(0);
@@ -306,7 +309,7 @@ public class HAConnection {
                                 continue;
                             }
                         }
-                    } else { // 未传输完成，继续传输
+                    } else { // 上次传输未完成，，继续传输
                         this.lastWriteOver = this.transferData();
                         if (!this.lastWriteOver) {
                             continue;
@@ -324,7 +327,7 @@ public class HAConnection {
                         }
 
                         long thisOffset = this.nextTransferFromWhere;
-                        this.nextTransferFromWhere += size;   //更新下次同步的起始位置
+                        this.nextTransferFromWhere += size;   //更新下次同步的起始位置,当前位置 + 修正过的size
 
                         selectResult.getByteBuffer().limit(size);
                         this.selectMappedBufferResult = selectResult;
