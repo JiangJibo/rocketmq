@@ -664,7 +664,8 @@ public class HAService {
                                 this.closeMaster();
                             }
                         }
-                        //最多阻塞1S,直到Master有数据同步于过来。若1S满了还是没有接受到数据,则读入byteBufferRead的大小为0,然后循环到这步
+                        //最多阻塞1S,直到Master有数据同步于过来。若1S满了还是没有接受到数据,中断阻塞,
+                        // 执行processReadEvent(),但结果读入byteBufferRead的大小为0,然后循环到这步
                         this.selector.select(1000);
 
                         // 处理读取事件
@@ -678,10 +679,9 @@ public class HAService {
                             continue;
                         }
 
-                        // Master过久未返回数据，关闭连接
                         long interval = HAService.this.getDefaultMessageStore().getSystemClock().now() - this.lastWriteTimestamp;
-                        if (interval > HAService.this.getDefaultMessageStore().getMessageStoreConfig()
-                            .getHaHousekeepingInterval()) {
+                        // Master超过20S未返回数据，关闭连接
+                        if (interval > HAService.this.getDefaultMessageStore().getMessageStoreConfig().getHaHousekeepingInterval()) {
                             log.warn("HAClient, housekeeping, found this connection[" + this.masterAddress
                                 + "] expired, " + interval);
                             this.closeMaster();

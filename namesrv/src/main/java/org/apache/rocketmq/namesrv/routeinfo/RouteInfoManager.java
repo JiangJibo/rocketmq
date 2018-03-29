@@ -149,7 +149,7 @@ public class RouteInfoManager {
                 }
                 brokerNames.add(brokerName);
 
-                // 更新broker信息
+                // 是不是注册某个Broker下新的机器
                 boolean registerFirst = false;
                 BrokerData brokerData = this.brokerAddrTable.get(brokerName);
                 if (null == brokerData) {
@@ -161,11 +161,12 @@ public class RouteInfoManager {
                     this.brokerAddrTable.put(brokerName, brokerData);
                 }
                 String oldAddr = brokerData.getBrokerAddrs().put(brokerId, brokerAddr);
+                // 当前Broker的第一台机器 || 当前Broker下新的机器
                 registerFirst = registerFirst || (null == oldAddr);
 
                 // 当注册Master && 有Topic配置时,更新topic信息
                 if (null != topicConfigWrapper && MixAll.MASTER_ID == brokerId) {
-                    //当版本变更了(注册Master) || 是注册某个Broker下的第一台机器
+                    // 当这次的心跳是Master发送的, 且Topic配置信息有变化 || Master的第一次心跳
                     if (this.isBrokerTopicConfigChanged(brokerAddr, topicConfigWrapper.getDataVersion()) || registerFirst) {
                         ConcurrentHashMap<String, TopicConfig> tcTable = topicConfigWrapper.getTopicConfigTable();
                         if (tcTable != null) {
@@ -200,6 +201,7 @@ public class RouteInfoManager {
                 if (MixAll.MASTER_ID != brokerId) {
                     String masterAddr = brokerData.getBrokerAddrs().get(MixAll.MASTER_ID);
                     if (masterAddr != null) {
+                        // 获取master的brokerLiveInfo,将其haServerAddr(addr)赋值给Slave的haServerAddr
                         BrokerLiveInfo brokerLiveInfo = this.brokerLiveTable.get(masterAddr);
                         if (brokerLiveInfo != null) {
                             result.setHaServerAddr(brokerLiveInfo.getHaServerAddr());

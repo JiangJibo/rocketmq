@@ -63,6 +63,7 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 public class BrokerController {
+
     private static final Logger log = LoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private static final Logger LOG_PROTECTION = LoggerFactory.getLogger(LoggerName.PROTECTION_LOGGER_NAME);
     private static final Logger LOG_WATER_MARK = LoggerFactory.getLogger(LoggerName.WATER_MARK_LOGGER_NAME);
@@ -86,7 +87,7 @@ public class BrokerController {
     private final Broker2Client broker2Client;
     private final SubscriptionGroupManager subscriptionGroupManager;
     private final ConsumerIdsChangeListener consumerIdsChangeListener;
-// todo 待读
+    // todo 待读
     private final RebalanceLockManager rebalanceLockManager = new RebalanceLockManager();
     private final BrokerOuterAPI brokerOuterAPI;
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl(
@@ -116,10 +117,10 @@ public class BrokerController {
     private Configuration configuration;
 
     public BrokerController(//
-        final BrokerConfig brokerConfig, //
-        final NettyServerConfig nettyServerConfig, //
-        final NettyClientConfig nettyClientConfig, //
-        final MessageStoreConfig messageStoreConfig //
+                            final BrokerConfig brokerConfig, //
+                            final NettyServerConfig nettyServerConfig, //
+                            final NettyClientConfig nettyClientConfig, //
+                            final MessageStoreConfig messageStoreConfig //
     ) {
         this.brokerConfig = brokerConfig;
         this.nettyServerConfig = nettyServerConfig;
@@ -183,9 +184,10 @@ public class BrokerController {
                 this.messageStore =
                     new DefaultMessageStore(this.messageStoreConfig, this.brokerStatsManager, this.messageArrivingListener,
                         this.brokerConfig);
-                this.brokerStats = new BrokerStats((DefaultMessageStore) this.messageStore);
+                this.brokerStats = new BrokerStats((DefaultMessageStore)this.messageStore);
                 //load plugin
-                MessageStorePluginContext context = new MessageStorePluginContext(messageStoreConfig, brokerStatsManager, messageArrivingListener, brokerConfig);
+                MessageStorePluginContext context = new MessageStorePluginContext(messageStoreConfig, brokerStatsManager, messageArrivingListener,
+                    brokerConfig);
                 this.messageStore = MessageStoreFactory.build(context, this.messageStore);
             } catch (IOException e) {
                 result = false;
@@ -197,7 +199,7 @@ public class BrokerController {
 
         if (result) {
             this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.clientHousekeepingService);
-            NettyServerConfig fastConfig = (NettyServerConfig) this.nettyServerConfig.clone();
+            NettyServerConfig fastConfig = (NettyServerConfig)this.nettyServerConfig.clone();
             fastConfig.setListenPort(nettyServerConfig.getListenPort() - 2);
             this.fastRemotingServer = new NettyRemotingServer(fastConfig, this.clientHousekeepingService);
             this.sendMessageExecutor = new BrokerFixedThreadPoolExecutor(
@@ -312,14 +314,15 @@ public class BrokerController {
                 }, 1000 * 10, 1000 * 60 * 2, TimeUnit.MILLISECONDS);
             }
 
-            //当当前角色是Slave时,赋值 HAClient 的 masterAddress
+            //当当前角色是Slave时
             if (BrokerRole.SLAVE == this.messageStoreConfig.getBrokerRole()) {
+                // 如果当前Broker配置中指定了haMasterAddress,则赋值 HAClient 的 masterAddress
                 if (this.messageStoreConfig.getHaMasterAddress() != null && this.messageStoreConfig.getHaMasterAddress().length() >= 6) {
                     // 将haMasterAddress的值设置到 HAService 的 HAClient 的masterAddress中
                     this.messageStore.updateHaMasterAddress(this.messageStoreConfig.getHaMasterAddress());
                     this.updateMasterHAServerAddrPeriodically = false;
                 } else {
-                    this.updateMasterHAServerAddrPeriodically = true;
+                    this.updateMasterHAServerAddrPeriodically = true;   //如果配置中未指定Master的IP,则定期从Namesrv处更新获取
                 }
 
                 //Slave每隔60S从Master处同步TopicConfig，ConsumerOffset，DelayOffset，SubscriptionGroupConfig
@@ -428,7 +431,8 @@ public class BrokerController {
 
     public void protectBroker() {
         if (this.brokerConfig.isDisableConsumeIfConsumerReadSlowly()) {
-            final Iterator<Map.Entry<String, MomentStatsItem>> it = this.brokerStatsManager.getMomentStatsItemSetFallSize().getStatsItemTable().entrySet().iterator();
+            final Iterator<Map.Entry<String, MomentStatsItem>> it = this.brokerStatsManager.getMomentStatsItemSetFallSize().getStatsItemTable().entrySet()
+                .iterator();
             while (it.hasNext()) {
                 final Map.Entry<String, MomentStatsItem> next = it.next();
                 final long fallBehindBytes = next.getValue().getValue().get();
@@ -450,8 +454,7 @@ public class BrokerController {
             slowTimeMills = rt == null ? 0 : this.messageStore.now() - rt.getCreateTimestamp();
         }
 
-        if (slowTimeMills < 0)
-            slowTimeMills = 0;
+        if (slowTimeMills < 0) { slowTimeMills = 0; }
 
         return slowTimeMills;
     }
@@ -644,6 +647,12 @@ public class BrokerController {
         }
     }
 
+    /**
+     * 向Namesrc注册Broker信息,每隔30S执行一次
+     *
+     * @param checkOrderConfig
+     * @param oneway
+     */
     public synchronized void registerBrokerAll(final boolean checkOrderConfig, boolean oneway) {
         TopicConfigSerializeWrapper topicConfigWrapper = this.getTopicConfigManager().buildTopicConfigSerializeWrapper();
 
@@ -670,8 +679,10 @@ public class BrokerController {
             oneway,
             this.brokerConfig.getRegisterBrokerTimeoutMills());
 
-        if (registerBrokerResult != null) { // TODO 待读：ha
+        if (registerBrokerResult != null) {
+            //如果Slave在配置时没有指定Master的IP
             if (this.updateMasterHAServerAddrPeriodically && registerBrokerResult.getHaServerAddr() != null) {
+                // Slave在注册Broker时,Namesrc会将Master的BrokerAddr返回来,更新HAClient上的 masterAddress
                 this.messageStore.updateHaMasterAddress(registerBrokerResult.getHaServerAddr());
             }
 
