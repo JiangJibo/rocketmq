@@ -82,6 +82,12 @@ public class HAService {
         this.groupTransferService.putRequest(request);
     }
 
+    /**
+     * 推送到Slave的Offset是否小于这条消息的Offset
+     *
+     * @param masterPutWhere
+     * @return
+     */
     public boolean isSlaveOK(final long masterPutWhere) {
         boolean result = this.connectionCount.get() > 0;
         result =
@@ -302,8 +308,10 @@ public class HAService {
             synchronized (this.requestsRead) {
                 if (!this.requestsRead.isEmpty()) {
                     for (CommitLog.GroupCommitRequest req : this.requestsRead) {
-                        // 等待Slave上传进度
+                        // 推送到Slave的Offset是否 >= 当前消息的Offset
                         boolean transferOK = HAService.this.push2SlaveMaxOffset.get() >= req.getNextOffset();
+                        //每次从Slave的进度提交请求能够中断wait
+                        //最多等5次Slave的Ack,如果Ack的进度 >= 当前消息的进度,则返回true
                         for (int i = 0; !transferOK && i < 5; i++) {
                             this.notifyTransferObject.waitForRunning(1000); // 唤醒
                             transferOK = HAService.this.push2SlaveMaxOffset.get() >= req.getNextOffset();
@@ -600,7 +608,7 @@ public class HAService {
         private boolean connectMaster() throws ClosedChannelException {
             if (null == socketChannel) {
                 String addr = this.masterAddress.get();
-                //当自身角色是Slave时,会将配置中的MessageStoreConfig中的haMasterAdress赋值给masterAddress
+                //当自身角色是Slave时,会将配置中的MessageStoreConfig中的haMasterAdress赋值给masterAddress,或者在registerBroker时的返回值赋值
                 if (addr != null) {
                     SocketAddress socketAddress = RemotingUtil.string2SocketAddress(addr);
                     if (socketAddress != null) {
@@ -657,7 +665,7 @@ public class HAService {
                 try {
                     //当存在masterAdress != null && 连接Master成功
                     if (this.connectMaster()) {
-                        // 若到满足上报间隔(5S)，上报到Master进度
+                        // 若距离上次上报时间超过5S，上报到Master进度
                         if (this.isTimeToReportOffset()) {
                             boolean result = this.reportSlaveMaxOffset(this.currentReportedOffset);
                             if (!result) {

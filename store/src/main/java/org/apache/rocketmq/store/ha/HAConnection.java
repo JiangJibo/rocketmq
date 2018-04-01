@@ -85,7 +85,7 @@ public class HAConnection {
     }
 
     /**
-     * 读取线程服务
+     * 读取Slave进度线程服务
      */
     class ReadSocketService extends ServiceThread {
 
@@ -108,6 +108,7 @@ public class HAConnection {
         public ReadSocketService(final SocketChannel socketChannel) throws IOException {
             this.selector = RemotingUtil.openSelector();
             this.socketChannel = socketChannel;
+            //向SocketChannle注册OP_READ事件
             this.socketChannel.register(this.selector, SelectionKey.OP_READ);
             this.thread.setDaemon(true);
         }
@@ -118,8 +119,8 @@ public class HAConnection {
 
             while (!this.isStopped()) {
                 try {
-                    //最多阻塞1S钟,当有一个Channel准备好I/O请求时，立即中断阻塞
-                    //若1S时间内也没有Channel准备好I/O请求,则processReadEvent()会立即返回true,然后再次阻塞,循环如此
+                    //最多阻塞1S钟,当有一个Channel发送了数据后，立即中断阻塞
+                    //若1S时间内也没有Channel发送了数据,则processReadEvent()会立即返回true,然后再次阻塞,循环如此
                     this.selector.select(1000);
                     boolean ok = this.processReadEvent();
                     if (!ok) {
@@ -127,7 +128,7 @@ public class HAConnection {
                         break;
                     }
 
-                    // 过长时间无心跳，断开连接
+                    // Slave超过20S没有返回数据，断开连接
                     long interval = HAConnection.this.haService.getDefaultMessageStore().getSystemClock().now() - this.lastReadTimestamp;
                     //超过20S时间没有收到Slave传递的消息,断开Slave连接
                     if (interval > HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig().getHaHousekeepingInterval()) {
@@ -200,7 +201,7 @@ public class HAConnection {
                             // 设置Slave CommitLog的最大位置
                             HAConnection.this.slaveAckOffset = readOffset;
 
-                            // 设置Slave 第一次请求的位置,初始化 slaveRequestOffset = 0
+                            // 设置Slave 第一次请求的位置,初始化 slaveRequestOffset = Slave的请求位置
                             if (HAConnection.this.slaveRequestOffset < 0) {
                                 HAConnection.this.slaveRequestOffset = readOffset;
                                 log.info("slave[" + HAConnection.this.clientAddr + "] request offset " + readOffset);
@@ -228,7 +229,7 @@ public class HAConnection {
     }
 
     /**
-     * 写入线程服务
+     * 写入Message线程服务
      */
     class WriteSocketService extends ServiceThread {
 
@@ -267,6 +268,7 @@ public class HAConnection {
                     this.selector.select(1000);
 
                     // 从未获得Slave读取进度请求，sleep等待。Slave第一次请求时会将初始化 slaveRequestOffset = Slave原始进度,可能为0,也可能是宕机重启,大于0
+                    // 只有Slave同步了其原始的maxPhyOffset时，Master才知道从哪里开始将数据同步给Slave
                     if (-1 == HAConnection.this.slaveRequestOffset) {
                         Thread.sleep(10);
                         continue;
@@ -274,7 +276,7 @@ public class HAConnection {
 
                     // 计算初始化nextTransferFromWhere
                     if (-1 == this.nextTransferFromWhere) {
-                        //Slave第一次请求
+                        //Slave的CommitLog里没有任何数据,当前请求是其第一次请求
                         if (0 == HAConnection.this.slaveRequestOffset) {
                             long masterOffset = HAConnection.this.haService.getDefaultMessageStore().getCommitLog().getMaxOffset();
                             //从lastMappedFile的0位开始,也就是会忽略之前的MappedFile,只从最后一个文件开始同步
@@ -283,9 +285,9 @@ public class HAConnection {
                             if (masterOffset < 0) {
                                 masterOffset = 0;
                             }
-
                             this.nextTransferFromWhere = masterOffset;
                         } else {
+                            //如果CommitLog是中途宕机了,重启,那么会接着上次的位置继续传输
                             this.nextTransferFromWhere = HAConnection.this.slaveRequestOffset;
                         }
 
@@ -295,7 +297,7 @@ public class HAConnection {
 
                     if (this.lastWriteOver) {
                         long interval = HAConnection.this.haService.getDefaultMessageStore().getSystemClock().now() - this.lastWriteTimestamp;
-                        //如果距离上次同步(写数据给Slave)超过5S,也就是5S内没有新的消息,发送一个空包过去,就是没有实际数据的
+                        //如果距离上次同步(写数据给Slave)超过5S,也就是5S内没有新的消息,发送一个空包过去,就是没有实际数据的,刷新Slave的最后写入时间
                         if (interval > HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig().getHaSendHeartbeatInterval()) {
                             // Build Header
                             this.byteBufferHeader.position(0);

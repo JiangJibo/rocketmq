@@ -737,8 +737,9 @@ public class CommitLog {
         if (BrokerRole.SYNC_MASTER == this.defaultMessageStore.getMessageStoreConfig().getBrokerRole()) {
             HAService service = this.defaultMessageStore.getHaService();
             if (msg.isWaitStoreMsgOK()) {
-                // Determine whether to wait
+                // 推送到Slave的Offset是否小于这条消息的Offset,且Slave落后Master的进度在允许范围内(256MB)
                 if (service.isSlaveOK(result.getWroteOffset() + result.getWroteBytes())) {
+                    //如果是ASYNC_FLUSH
                     if (null == request) {
                         request = new GroupCommitRequest(result.getWroteOffset() + result.getWroteBytes());
                     }
@@ -934,11 +935,20 @@ public class CommitLog {
             return nextOffset;
         }
 
+        /**
+         * 终止等待
+         *
+         * @param flushOK
+         */
         public void wakeupCustomer(final boolean flushOK) {
             this.flushOK = flushOK;
             this.countDownLatch.countDown();
         }
 
+        /**
+         * @param timeout
+         * @return
+         */
         public boolean waitForFlush(long timeout) {
             try {
                 this.countDownLatch.await(timeout, TimeUnit.MILLISECONDS);
