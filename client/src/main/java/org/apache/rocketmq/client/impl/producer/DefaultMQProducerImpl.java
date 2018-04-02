@@ -296,9 +296,8 @@ public class DefaultMQProducerImpl implements MQProducerInner {
              * @param producerGroup producerGroup
              * @param exception 检查【本地事务】状态发生的异常
              */
-            private void processTransactionState(//
-                                                 final LocalTransactionState localTransactionState, //
-                                                 final String producerGroup, //
+            private void processTransactionState(final LocalTransactionState localTransactionState,
+                                                 final String producerGroup,
                                                  final Throwable exception) {
                 final EndTransactionRequestHeader thisHeader = new EndTransactionRequestHeader();
                 thisHeader.setCommitLogOffset(checkRequestHeader.getCommitLogOffset());
@@ -1166,9 +1165,8 @@ public class DefaultMQProducerImpl implements MQProducerInner {
      * @throws InterruptedException 当线程中断时
      * @throws UnknownHostException 当解码消息编号失败是
      */
-    public void endTransaction(//
-                               final SendResult sendResult, //
-                               final LocalTransactionState localTransactionState, //
+    public void endTransaction(final SendResult sendResult,
+                               final LocalTransactionState localTransactionState,
                                final Throwable localException) throws RemotingException, MQBrokerException, InterruptedException, UnknownHostException {
         // 解码消息编号
         final MessageId id;

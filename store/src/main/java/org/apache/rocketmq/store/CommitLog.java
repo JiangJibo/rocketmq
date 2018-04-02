@@ -605,7 +605,7 @@ public class CommitLog {
         String topic = msg.getTopic();
         int queueId = msg.getQueueId();
 
-        // 延时消息处理
+        // 延时消息处理,事务的 TRANSACTION_PREPARED_TYPE和TRANSACTION_ROLLBACK_TYPE 消息不支持延时投递
         final int tranType = MessageSysFlag.getTransactionValue(msg.getSysFlag());
         if (tranType == MessageSysFlag.TRANSACTION_NOT_TYPE || tranType == MessageSysFlag.TRANSACTION_COMMIT_TYPE) {
             // Delay Delivery
@@ -1292,11 +1292,12 @@ public class CommitLog {
         public AppendMessageResult doAppend(final long fileFromOffset, final ByteBuffer byteBuffer, final int maxBlank, final MessageExtBrokerInner msgInner) {
             // STORETIMESTAMP + STOREHOSTADDRESS + OFFSET <br>
 
-            //物理写入偏移量,也就是在存入了当前消息后的偏移量
+            //物理写入偏移量,也就是当前文件里已经写入的数据位置
             long wroteOffset = fileFromOffset + byteBuffer.position();
 
             // 计算commitLog里的msgId
             this.resetByteBuffer(hostHolder, 8);
+            //创建messageId,由 "ip+port+wroteOffset" 组成
             String msgId = MessageDecoder.createMessageId(this.msgIdMemory, msgInner.getStoreHostBytes(hostHolder), wroteOffset);
 
             // Record ConsumeQueue information 获取队列offset
@@ -1304,7 +1305,8 @@ public class CommitLog {
             keyBuilder.append(msgInner.getTopic());
             keyBuilder.append('-');
             keyBuilder.append(msgInner.getQueueId());
-            String key = keyBuilder.toString();   //tpoic-queueId
+            //tpoic-queueId
+            String key = keyBuilder.toString();
             //记录这条消息的消费信息在当前队列的序号,也就是第几条消息
             Long queueOffset = CommitLog.this.topicQueueTable.get(key);
             if (null == queueOffset) {
@@ -1312,7 +1314,7 @@ public class CommitLog {
                 CommitLog.this.topicQueueTable.put(key, queueOffset);
             }
 
-            // Transaction messages that require special handling // TODO 疑问：用途
+            // Transaction messages that require special handling
             final int tranType = MessageSysFlag.getTransactionValue(msgInner.getSysFlag());
             switch (tranType) {
                 // Prepared and Rollback message is not consumed, will not enter the
@@ -1414,6 +1416,7 @@ public class CommitLog {
                 msgInner.getStoreTimestamp(), queueOffset, CommitLog.this.defaultMessageStore.now() - beginTimeMills);
 
             switch (tranType) {
+                //事务类型为PREPARED_TYPE和ROLLBACK_TYPE的消息不会进ConsumeQueue,所以这里不会增加queueOffset的值
                 case MessageSysFlag.TRANSACTION_PREPARED_TYPE:
                 case MessageSysFlag.TRANSACTION_ROLLBACK_TYPE:
                     break;

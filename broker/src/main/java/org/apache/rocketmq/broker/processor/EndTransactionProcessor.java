@@ -148,12 +148,14 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
                 return response;
             }
 
-            // 生成消息
+            // 提取之前存储的事务消息数据,清除延时级别
             MessageExtBrokerInner msgInner = this.endMessageTransaction(msgExt);
+            //设置事务消息的处理结果
             msgInner.setSysFlag(MessageSysFlag.resetTransactionValue(msgInner.getSysFlag(), requestHeader.getCommitOrRollback()));
             msgInner.setQueueOffset(requestHeader.getTranStateTableOffset());
             msgInner.setPreparedTransactionOffset(requestHeader.getCommitLogOffset());
             msgInner.setStoreTimestamp(msgExt.getStoreTimestamp());
+            //如果处理结果是ROLLBACK,清除消息体
             if (MessageSysFlag.TRANSACTION_ROLLBACK_TYPE == requestHeader.getCommitOrRollback()) {
                 msgInner.setBody(null);
             }
@@ -247,8 +249,8 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
         msgInner.setStoreHost(msgExt.getStoreHost());
         msgInner.setReconsumeTimes(msgExt.getReconsumeTimes());
 
-        msgInner.setWaitStoreMsgOK(false);
-        MessageAccessor.clearProperty(msgInner, MessageConst.PROPERTY_DELAY_TIME_LEVEL); // 清楚延迟级别=》事务消息不支持定时消息。
+        msgInner.setWaitStoreMsgOK(false);  //不等待Slave是的进度上报
+        MessageAccessor.clearProperty(msgInner, MessageConst.PROPERTY_DELAY_TIME_LEVEL); // 清除延迟级别=》事务消息不支持延时投递
 
         msgInner.setTopic(msgExt.getTopic());
         msgInner.setQueueId(msgExt.getQueueId());

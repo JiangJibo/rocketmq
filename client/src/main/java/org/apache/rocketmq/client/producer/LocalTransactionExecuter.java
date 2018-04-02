@@ -18,6 +18,17 @@ package org.apache.rocketmq.client.producer;
 
 import org.apache.rocketmq.common.message.Message;
 
+/**
+ * 本地事务执行器
+ */
 public interface LocalTransactionExecuter {
+
+    /**
+     * 执行本地事务分支
+     *
+     * @param msg
+     * @param arg
+     * @return
+     */
     LocalTransactionState executeLocalTransactionBranch(final Message msg, final Object arg);
 }

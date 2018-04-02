@@ -212,6 +212,7 @@ public class IndexService {
 
     /**
      * 只有在消息中指定了keys或者uniqueKey,才会构建索引
+     * {@linkplain MessageSysFlag#TRANSACTION_ROLLBACK_TYPE}类型消息不会构建索引
      *
      * @param req
      */
@@ -232,11 +233,12 @@ public class IndexService {
                 case MessageSysFlag.TRANSACTION_PREPARED_TYPE:
                 case MessageSysFlag.TRANSACTION_COMMIT_TYPE:
                     break;
+                // 事务类型为ROLLBACK_TYPE的消息不会进IndexFile
                 case MessageSysFlag.TRANSACTION_ROLLBACK_TYPE:
                     return;
             }
 
-            if (req.getUniqKey() != null) {   //若消息体中指定了uniqueKey属性
+            if (req.getUniqKey() != null) {   //若消息体中指定了uniqueKey属性(默认有)
                 indexFile = putKey(indexFile, msg, buildKey(topic, req.getUniqKey()));
                 if (indexFile == null) {
                     log.error("putKey error commitlog {} uniqkey {}", req.getCommitLogOffset(), req.getUniqKey());
