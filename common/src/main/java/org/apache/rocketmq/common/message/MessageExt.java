@@ -24,6 +24,7 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 
 public class MessageExt extends Message {
+
     private static final long serialVersionUID = 5720810158625748049L;
 
     /**
@@ -56,7 +57,14 @@ public class MessageExt extends Message {
      * 存储host
      */
     private SocketAddress storeHost;
+    /**
+     *
+     */
     private String msgId;
+    /**
+     * 消息存储时的位置信息
+     * ip+port+commitLogOffset
+     */
     private long commitLogOffset;
     /**
      * body crc
@@ -64,13 +72,16 @@ public class MessageExt extends Message {
     private int bodyCRC;
     private int reconsumeTimes;
 
+    /**
+     * 事务Prepared消息的CommitLog
+     */
     private long preparedTransactionOffset;
 
     public MessageExt() {
     }
 
     public MessageExt(int queueId, long bornTimestamp, SocketAddress bornHost, long storeTimestamp,
-        SocketAddress storeHost, String msgId) {
+                      SocketAddress storeHost, String msgId) {
         this.queueId = queueId;
         this.bornTimestamp = bornTimestamp;
         this.bornHost = bornHost;
@@ -88,7 +99,7 @@ public class MessageExt extends Message {
     }
 
     private static ByteBuffer socketAddress2ByteBuffer(final SocketAddress socketAddress, final ByteBuffer byteBuffer) {
-        InetSocketAddress inetSocketAddress = (InetSocketAddress) socketAddress;
+        InetSocketAddress inetSocketAddress = (InetSocketAddress)socketAddress;
         byteBuffer.put(inetSocketAddress.getAddress().getAddress(), 0, 4);
         byteBuffer.putInt(inetSocketAddress.getPort());
         byteBuffer.flip();
@@ -142,7 +153,7 @@ public class MessageExt extends Message {
 
     public String getBornHostString() {
         if (this.bornHost != null) {
-            InetSocketAddress inetSocketAddress = (InetSocketAddress) this.bornHost;
+            InetSocketAddress inetSocketAddress = (InetSocketAddress)this.bornHost;
             return inetSocketAddress.getAddress().getHostAddress();
         }
 
@@ -151,7 +162,7 @@ public class MessageExt extends Message {
 
     public String getBornHostNameString() {
         if (this.bornHost != null) {
-            InetSocketAddress inetSocketAddress = (InetSocketAddress) this.bornHost;
+            InetSocketAddress inetSocketAddress = (InetSocketAddress)this.bornHost;
             return inetSocketAddress.getAddress().getHostName();
         }
 
@@ -174,6 +185,11 @@ public class MessageExt extends Message {
         this.storeHost = storeHost;
     }
 
+    /**
+     * 客户端的MessageExt重写了此方法，默认用uniqID替代msgId
+     *
+     * @return
+     */
     public String getMsgId() {
         return msgId;
     }

@@ -123,7 +123,7 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
             }
         }
 
-        // 查询提交的消息
+        // 将Prepared的消息从CommitLog查询出来
         final MessageExt msgExt = this.brokerController.getMessageStore().lookMessageByOffset(requestHeader.getCommitLogOffset());
         if (msgExt != null) {
             // 校验 producerGroup
@@ -225,7 +225,7 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
     }
 
     /**
-     * 生成消息
+     * 生成事务结果消息
      *
      * @param msgExt 消息
      * @return 消息

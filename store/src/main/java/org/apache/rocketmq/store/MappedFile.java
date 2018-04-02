@@ -273,8 +273,7 @@ public class MappedFile extends ReferenceResource {
         if (currentPos < this.fileSize) {
             ByteBuffer byteBuffer = writeBuffer != null ? writeBuffer.slice() : this.mappedByteBuffer.slice();
             byteBuffer.position(currentPos);
-            AppendMessageResult result =
-                cb.doAppend(this.getFileFromOffset(), byteBuffer, this.fileSize - currentPos, msg);
+            AppendMessageResult result = cb.doAppend(this.getFileFromOffset(), byteBuffer, this.fileSize - currentPos, msg);
             this.wrotePosition.addAndGet(result.getWroteBytes());
             this.storeTimestamp = result.getStoreTimestamp();
             return result;

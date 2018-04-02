@@ -36,7 +36,7 @@ public class AppendMessageResult {
     private int wroteBytes;
     /**
      * Message ID
-     * 消息编号
+     * ip+port+commitlog offset
      */
     private String msgId;
     /**

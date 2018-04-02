@@ -17,18 +17,20 @@
 package org.apache.rocketmq.client.producer;
 
 import com.alibaba.fastjson.JSON;
+
 import org.apache.rocketmq.common.message.MessageQueue;
 
 /**
  * 发送消息结果
  */
 public class SendResult {
+
     /**
      * 发送结果状态
      */
     private SendStatus sendStatus;
     /**
-     * 消息编号
+     * 消息的uniqueKey,由Broker通过算法生成
      */
     private String msgId;
     /**
@@ -44,7 +46,7 @@ public class SendResult {
      */
     private String transactionId;
     /**
-     * commitLog存储消息编号
+     * ip+port+commitLog存储消息编号
      */
     private String offsetMsgId;
     private String regionId;
@@ -62,7 +64,7 @@ public class SendResult {
     }
 
     public SendResult(final SendStatus sendStatus, final String msgId, final MessageQueue messageQueue, final long queueOffset, final String transactionId,
-        final String offsetMsgId, final String regionId) {
+                      final String offsetMsgId, final String regionId) {
         this.sendStatus = sendStatus;
         this.msgId = msgId;
         this.messageQueue = messageQueue;
