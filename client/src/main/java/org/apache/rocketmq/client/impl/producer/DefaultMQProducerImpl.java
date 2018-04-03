@@ -145,6 +145,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                         null);
                 }
 
+                //把 MixAll.DEFAULT_TOPIC 放入其中
                 this.topicPublishInfoTable.put(this.defaultMQProducer.getCreateTopicKey(), new TopicPublishInfo());
 
                 // 启动MQClient对象

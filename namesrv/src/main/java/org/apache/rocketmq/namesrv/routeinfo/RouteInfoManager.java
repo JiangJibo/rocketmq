@@ -171,6 +171,7 @@ public class RouteInfoManager {
                         ConcurrentHashMap<String, TopicConfig> tcTable = topicConfigWrapper.getTopicConfigTable();
                         if (tcTable != null) {
                             for (Map.Entry<String, TopicConfig> entry : tcTable.entrySet()) {
+                                //只有Master相关的注册才会创建QueueData
                                 this.createAndUpdateQueueData(brokerName, entry.getValue());
                             }
                         }

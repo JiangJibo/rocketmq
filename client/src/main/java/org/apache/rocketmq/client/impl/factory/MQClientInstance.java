@@ -198,7 +198,7 @@ public class MQClientInstance {
             List<QueueData> qds = route.getQueueDatas();
             Collections.sort(qds);
             for (QueueData qd : qds) {  //为每个QueueData找到所属的BrokerData
-                if (PermName.isWriteable(qd.getPerm())) {  //队列是否是写入队列,过滤Slave的MessageQueue
+                if (PermName.isWriteable(qd.getPerm())) {  //队列是否是写入队列,Slave注册Broker时会在Namesrv会创建BrokerData,但不会创建QueueData
                     BrokerData brokerData = null;
                     for (BrokerData bd : route.getBrokerDatas()) { //找到当前QueueData所属的BrokerData
                         if (bd.getBrokerName().equals(qd.getBrokerName())) {
@@ -300,7 +300,7 @@ public class MQClientInstance {
             }, 1000 * 10, 1000 * 60 * 2, TimeUnit.MILLISECONDS);
         }
 
-        // 每隔30S定时拉取 Topic路由配置
+        // 每隔30S定时更新 Topic路由配置
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -398,6 +398,7 @@ public class MQClientInstance {
 
     /**
      * 将被关闭连接的Broker从{@link #brokerAddrTable}移除
+     * 也就是清空${@link #brokerAddrTable} 里不在 ${@link #topicRouteTable} 的元素
      */
     private void cleanOfflineBroker() {
         try {
@@ -498,6 +499,10 @@ public class MQClientInstance {
         return updateTopicRouteInfoFromNameServer(topic, false, null);
     }
 
+    /**
+     * @param addr
+     * @return
+     */
     private boolean isBrokerAddrExistInTopicRouteTable(final String addr) {
         Iterator<Entry<String, TopicRouteData>> it = this.topicRouteTable.entrySet().iterator();
         while (it.hasNext()) {
@@ -521,6 +526,7 @@ public class MQClientInstance {
      * 消费者向Master和Slave都发送心跳
      */
     private void sendHeartbeatToAllBroker() {
+        // 封装Client要发送的心跳数据
         final HeartbeatData heartbeatData = this.prepareHeartbeatData();
         final boolean producerEmpty = heartbeatData.getProducerDataSet().isEmpty();
         final boolean consumerEmpty = heartbeatData.getConsumerDataSet().isEmpty();
@@ -638,11 +644,12 @@ public class MQClientInstance {
                             TopicRouteData cloneTopicRouteData = topicRouteData.cloneTopicRouteData();
 
                             // 更新 Broker 地址相关信息,当某个Broker心跳超时后,会被从BrokerData的brokerAddrs中移除(由Namesrv定时操作)
+                            // Namesrv存在Slave的BrokerData,所以brokerAddrTable含有Slave的brokerAddr
                             for (BrokerData bd : topicRouteData.getBrokerDatas()) {
                                 this.brokerAddrTable.put(bd.getBrokerName(), bd.getBrokerAddrs());
                             }
 
-                            // 更新生产者里的TopicPublishInfo,  过滤掉那些Master挂了的Broker
+                            // 更新生产者里的TopicPublishInfo,Slave在注册Broker时不会生成QueueData,但会生成BrokerData
                             TopicPublishInfo publishInfo = topicRouteData2TopicPublishInfo(topic, topicRouteData);
                             publishInfo.setHaveTopicRouterInfo(true);
                             for (Entry<String, MQProducerInner> entry : this.producerTable.entrySet()) {
@@ -652,7 +659,7 @@ public class MQClientInstance {
                                 }
                             }
 
-                            // 更新订阅者(消费者)里的队列信息,  即使Broker的Master挂了，还是可以从slave读
+                            // 更新订阅者(消费者)里的队列信息,Slave在注册Broker时不会生成QueueData,但会生成BrokerData
                             Set<MessageQueue> subscribeInfo = topicRouteData2TopicSubscribeInfo(topic, topicRouteData);
                             for (Entry<String, MQConsumerInner> entry : this.consumerTable.entrySet()) {
                                 MQConsumerInner impl = entry.getValue();
