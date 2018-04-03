@@ -20,9 +20,16 @@ import java.nio.ByteBuffer;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.apache.rocketmq.common.UtilAll;
 
+/**
+ * 为Message设置在客户端的id,也就是{@link MessageClientExt#getMsgId()}
+ * 通过{@link #createUniqID()}方法生成Message的唯一ID,
+ * 然后赋值到Properties的{@link MessageConst#PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX}属性中
+ */
 public class MessageClientIDSetter {
+
     private static final String TOPIC_KEY_SPLITTER = "#";
     private static final int LEN;
     private static final String FIX_STRING;
@@ -64,10 +71,10 @@ public class MessageClientIDSetter {
     public static Date getNearlyTimeFromID(String msgID) {
         ByteBuffer buf = ByteBuffer.allocate(8);
         byte[] bytes = UtilAll.string2bytes(msgID);
-        buf.put((byte) 0);
-        buf.put((byte) 0);
-        buf.put((byte) 0);
-        buf.put((byte) 0);
+        buf.put((byte)0);
+        buf.put((byte)0);
+        buf.put((byte)0);
+        buf.put((byte)0);
         buf.put(bytes, 10, 4);
         buf.position(0);
         long spanMS = buf.getLong();
@@ -113,8 +120,8 @@ public class MessageClientIDSetter {
             setStartTime(current);
         }
         buffer.position(0);
-        buffer.putInt((int) (System.currentTimeMillis() - startTime));
-        buffer.putShort((short) COUNTER.getAndIncrement());
+        buffer.putInt((int)(System.currentTimeMillis() - startTime));
+        buffer.putShort((short)COUNTER.getAndIncrement());
         return buffer.array();
     }
 

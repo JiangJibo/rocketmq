@@ -16,6 +16,12 @@
  */
 package org.apache.rocketmq.common.message;
 
+import java.nio.ByteBuffer;
+
+/**
+ * 在客户端的MessageExt
+ * 使用Client为消息生成的uniqID来替代msgId
+ */
 public class MessageClientExt extends MessageExt {
 
     public String getOffsetMsgId() {
@@ -26,13 +32,20 @@ public class MessageClientExt extends MessageExt {
         super.setMsgId(offsetMsgId);
     }
 
+    /**
+     * 在客户端,使用uniqID来替代msgId
+     * 在服务端,使用ip:port+commitLog来替代msgId
+     *
+     * @return
+     * @see MessageDecoder#decode(ByteBuffer, boolean, boolean, boolean)
+     */
     @Override
     public String getMsgId() {
         String uniqID = MessageClientIDSetter.getUniqID(this);
-        if (uniqID == null) {
-            return this.getOffsetMsgId();
-        } else {
+        if (uniqID != null) {
             return uniqID;
+        } else {
+            return this.getOffsetMsgId();
         }
     }
 

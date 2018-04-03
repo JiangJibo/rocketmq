@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 
 // TODO 消息相关
+
 /**
  * 消息解析器
  */
@@ -53,8 +54,8 @@ public class MessageDecoder {
     /**
      * 创建Message编号
      *
-     * @param input input字节缓冲流
-     * @param addr socket地址字节缓冲流
+     * @param input  input字节缓冲流
+     * @param addr   socket地址字节缓冲流
      * @param offset 地址
      * @return Message编号
      */
@@ -70,7 +71,7 @@ public class MessageDecoder {
 
     public static String createMessageId(SocketAddress socketAddress, long transactionIdhashCode) {
         ByteBuffer byteBuffer = ByteBuffer.allocate(MessageDecoder.MSG_ID_LENGTH);
-        InetSocketAddress inetSocketAddress = (InetSocketAddress) socketAddress;
+        InetSocketAddress inetSocketAddress = (InetSocketAddress)socketAddress;
         byteBuffer.put(inetSocketAddress.getAddress().getAddress());
         byteBuffer.putInt(inetSocketAddress.getPort());
         byteBuffer.putLong(transactionIdhashCode);
@@ -111,10 +112,10 @@ public class MessageDecoder {
     public static byte[] encode(MessageExt messageExt, boolean needCompress) throws Exception {
         byte[] body = messageExt.getBody();
         byte[] topics = messageExt.getTopic().getBytes(CHARSET_UTF8);
-        byte topicLen = (byte) topics.length;
+        byte topicLen = (byte)topics.length;
         String properties = messageProperties2String(messageExt.getProperties());
         byte[] propertiesBytes = properties.getBytes(CHARSET_UTF8);
-        short propertiesLength = (short) propertiesBytes.length;
+        short propertiesLength = (short)propertiesBytes.length;
         int sysFlag = messageExt.getSysFlag();
         byte[] newBody = messageExt.getBody();
         if (needCompress && (sysFlag & MessageSysFlag.COMPRESSED_FLAG) == MessageSysFlag.COMPRESSED_FLAG) {
@@ -180,7 +181,7 @@ public class MessageDecoder {
         byteBuffer.putLong(bornTimeStamp);
 
         // 10 BORNHOST
-        InetSocketAddress bornHost = (InetSocketAddress) messageExt.getBornHost();
+        InetSocketAddress bornHost = (InetSocketAddress)messageExt.getBornHost();
         byteBuffer.put(bornHost.getAddress().getAddress());
         byteBuffer.putInt(bornHost.getPort());
 
@@ -189,7 +190,7 @@ public class MessageDecoder {
         byteBuffer.putLong(storeTimestamp);
 
         // 12 STOREHOST
-        InetSocketAddress serverHost = (InetSocketAddress) messageExt.getStoreHost();
+        InetSocketAddress serverHost = (InetSocketAddress)messageExt.getStoreHost();
         byteBuffer.put(serverHost.getAddress().getAddress());
         byteBuffer.putInt(serverHost.getPort());
 
@@ -221,6 +222,16 @@ public class MessageDecoder {
         return decode(byteBuffer, readBody, deCompressBody, false);
     }
 
+    /**
+     * 将ByteBuffer解析生成Message
+     * 如果当前是Client,则解析成MessageClientExt,否则解析成MessageExt
+     *
+     * @param byteBuffer
+     * @param readBody
+     * @param deCompressBody
+     * @param isClient 是否是客户端
+     * @return
+     */
     public static MessageExt decode(
         java.nio.ByteBuffer byteBuffer, final boolean readBody, final boolean deCompressBody, final boolean isClient) {
         try {
@@ -311,7 +322,7 @@ public class MessageDecoder {
 
             // 16 TOPIC
             byte topicLen = byteBuffer.get();
-            byte[] topic = new byte[(int) topicLen];
+            byte[] topic = new byte[(int)topicLen];
             byteBuffer.get(topic);
             msgExt.setTopic(new String(topic, CHARSET_UTF8));
 
@@ -327,10 +338,11 @@ public class MessageDecoder {
 
             ByteBuffer byteBufferMsgId = ByteBuffer.allocate(MSG_ID_LENGTH);
             String msgId = createMessageId(byteBufferMsgId, msgExt.getStoreHostBytes(), msgExt.getCommitLogOffset());
+            //MessageClientExt重写getMsgId()方法,获取Message里的UNIQ_KEY作为值。也重写了setMsgId()方法,什么也不做
             msgExt.setMsgId(msgId);
-
+            //MessageExtClient因为Properties里有uniqID,所以由 ip+port+offset 组成的数据赋值给OffsetMsgId
             if (isClient) {
-                ((MessageClientExt) msgExt).setOffsetMsgId(msgId);
+                ((MessageClientExt)msgExt).setOffsetMsgId(msgId);
             }
 
             return msgExt;

@@ -23,6 +23,9 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 
+/**
+ * Message封装,Broker用 MessageExtBrokerInner ,Client用 MessageClientExt
+ */
 public class MessageExt extends Message {
 
     private static final long serialVersionUID = 5720810158625748049L;
@@ -58,12 +61,12 @@ public class MessageExt extends Message {
      */
     private SocketAddress storeHost;
     /**
-     *
+     * 如果在Client,则存储uniqID;
+     * 如果在Broker,存储 ip:port+commitLogOffset
      */
     private String msgId;
     /**
      * 消息存储时的位置信息
-     * ip+port+commitLogOffset
      */
     private long commitLogOffset;
     /**

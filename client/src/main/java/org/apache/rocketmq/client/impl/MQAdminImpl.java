@@ -359,13 +359,13 @@ public class MQAdminImpl {
                     if (qr.getIndexLastUpdateTimestamp() > indexLastUpdateTimestamp) {
                         indexLastUpdateTimestamp = qr.getIndexLastUpdateTimestamp();
                     }
-
+                    //通过uniqueKey查询消息得到了多个消结果,结果按照存储时间排列
                     for (MessageExt msgExt : qr.getMessageList()) {
                         if (isUniqKey) {
                             if (msgExt.getMsgId().equals(key)) {
 
                                 if (messageList.size() > 0) {
-
+                                    //优先选择存储时间最早的
                                     if (messageList.get(0).getStoreTimestamp() > msgExt.getStoreTimestamp()) {
 
                                         messageList.clear();

@@ -30,7 +30,7 @@ public class SendResult {
      */
     private SendStatus sendStatus;
     /**
-     * 消息的uniqueKey,由Broker通过算法生成
+     * 消息的uniqueKey,有Cilent发送消息时生成
      */
     private String msgId;
     /**

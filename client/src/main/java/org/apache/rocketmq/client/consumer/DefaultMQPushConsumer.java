@@ -52,7 +52,7 @@ import java.util.Set;
  * </p>
  *
  * <p>
- *     <strong>Thread Safety:</strong> After initialization, the instance can be regarded as thread-safe.
+ * <strong>Thread Safety:</strong> After initialization, the instance can be regarded as thread-safe.
  * </p>
  */
 public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsumer {
@@ -92,29 +92,29 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      *
      * There are three consuming points:
      * <ul>
-     *     <li>
-     *         <code>CONSUME_FROM_LAST_OFFSET</code>: consumer clients pick up where it stopped previously.
-     *         If it were a newly booting up consumer client, according aging of the consumer group, there are two
-     *         cases:
-     *         <ol>
-     *             <li>
-     *                 if the consumer group is created so recently that the earliest message being subscribed has yet
-     *                 expired, which means the consumer group represents a lately launched business, consuming will
-     *                 start from the very beginning;
-     *             </li>
-     *             <li>
-     *                 if the earliest message being subscribed has expired, consuming will start from the latest
-     *                 messages, meaning messages born prior to the booting timestamp would be ignored.
-     *             </li>
-     *         </ol>
-     *     </li>
-     *     <li>
-     *         <code>CONSUME_FROM_FIRST_OFFSET</code>: Consumer client will start from earliest messages available.
-     *     </li>
-     *     <li>
-     *         <code>CONSUME_FROM_TIMESTAMP</code>: Consumer client will start from specified timestamp, which means
-     *         messages born prior to {@link #consumeTimestamp} will be ignored
-     *     </li>
+     * <li>
+     * <code>CONSUME_FROM_LAST_OFFSET</code>: consumer clients pick up where it stopped previously.
+     * If it were a newly booting up consumer client, according aging of the consumer group, there are two
+     * cases:
+     * <ol>
+     * <li>
+     * if the consumer group is created so recently that the earliest message being subscribed has yet
+     * expired, which means the consumer group represents a lately launched business, consuming will
+     * start from the very beginning;
+     * </li>
+     * <li>
+     * if the earliest message being subscribed has expired, consuming will start from the latest
+     * messages, meaning messages born prior to the booting timestamp would be ignored.
+     * </li>
+     * </ol>
+     * </li>
+     * <li>
+     * <code>CONSUME_FROM_FIRST_OFFSET</code>: Consumer client will start from earliest messages available.
+     * </li>
+     * <li>
+     * <code>CONSUME_FROM_TIMESTAMP</code>: Consumer client will start from specified timestamp, which means
+     * messages born prior to {@link #consumeTimestamp} will be ignored
+     * </li>
      * </ul>
      */
     private ConsumeFromWhere consumeFromWhere = ConsumeFromWhere.CONSUME_FROM_LAST_OFFSET;
@@ -232,8 +232,9 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Constructor specifying consumer group, RPC hook and message queue allocating algorithm.
-     * @param consumerGroup Consume queue.
-     * @param rpcHook RPC hook to execute before each remoting command.
+     *
+     * @param consumerGroup                Consume queue.
+     * @param rpcHook                      RPC hook to execute before each remoting command.
      * @param allocateMessageQueueStrategy message queue allocating algorithm.
      */
     public DefaultMQPushConsumer(final String consumerGroup, RPCHook rpcHook, AllocateMessageQueueStrategy allocateMessageQueueStrategy) {
@@ -244,6 +245,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Constructor specifying RPC hook.
+     *
      * @param rpcHook RPC hook to execute before each remoting command.
      */
     public DefaultMQPushConsumer(RPCHook rpcHook) {
@@ -252,6 +254,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Constructor specifying consumer group.
+     *
      * @param consumerGroup Consumer group.
      */
     public DefaultMQPushConsumer(final String consumerGroup) {
@@ -288,6 +291,17 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
         return this.defaultMQPushConsumerImpl.earliestMsgStoreTime(mq);
     }
 
+    /**
+     * 通过offsetMsgId查询消息
+     * offsetMsgId由 ip:port+commitLog Offset组成
+     *
+     * @param offsetMsgId message id
+     * @return
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     * @throws MQClientException
+     */
     @Override
     public MessageExt viewMessage(String offsetMsgId) throws RemotingException, MQBrokerException, InterruptedException, MQClientException {
         return this.defaultMQPushConsumerImpl.viewMessage(offsetMsgId);
@@ -299,6 +313,19 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
         return this.defaultMQPushConsumerImpl.queryMessage(topic, key, maxNum, begin, end);
     }
 
+    /**
+     * 通过topic和msgId查询消息
+     * msgId可能是uniqID,也可能是offsetMsgId
+     * 先使用offsetMsgId形式尝试,如果解析ip和port出现异常,那么再用topic和uniqID查询
+     *
+     * @param topic
+     * @param msgId
+     * @return
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     * @throws MQClientException
+     */
     @Override
     public MessageExt viewMessage(String topic, String msgId) throws RemotingException, MQBrokerException, InterruptedException, MQClientException {
         try {
@@ -420,7 +447,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Send message back to broker which will be re-delivered in future.
-     * @param msg Message to send back.
+     *
+     * @param msg        Message to send back.
      * @param delayLevel delay level.
      * @throws RemotingException if there is any network-tier error.
      * @throws MQBrokerException if there is any broker error.
@@ -437,7 +465,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      * Send message back to the broker whose name is <code>brokerName</code> and the message will be re-delivered in
      * future.
      *
-     * @param msg Message to send back.
+     * @param msg        Message to send back.
      * @param delayLevel delay level.
      * @param brokerName broker name.
      * @throws RemotingException if there is any network-tier error.
@@ -458,6 +486,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * This method gets internal infrastructure readily to serve. Instances must call this method after configuration.
+     *
      * @throws MQClientException if there is any client error.
      */
     @Override
@@ -505,9 +534,9 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     /**
      * Subscribe a topic to consuming subscription.
      *
-     * @param topic topic to subscribe.
+     * @param topic         topic to subscribe.
      * @param subExpression subscription expression.it only support or operation such as "tag1 || tag2 || tag3" <br>
-     *     if null or * expression,meaning subscribe all
+     *                      if null or * expression,meaning subscribe all
      * @throws MQClientException if there is any client error.
      */
     @Override
@@ -517,8 +546,9 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Subscribe a topic to consuming subscription.
-     * @param topic topic to consume.
-     * @param fullClassName full class name,must extend org.apache.rocketmq.common.filter. MessageFilter
+     *
+     * @param topic             topic to consume.
+     * @param fullClassName     full class name,must extend org.apache.rocketmq.common.filter. MessageFilter
      * @param filterClassSource class source code,used UTF-8 file encoding,must be responsible for your code safety
      * @throws MQClientException
      */
@@ -529,6 +559,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Un-subscribe the specified topic from subscription.
+     *
      * @param topic message topic
      */
     @Override
