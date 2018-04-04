@@ -30,7 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Broker对Client的心跳连接的事件监听服务
+ * Broker对Client的Channel事件监听服务
  */
 public class ClientHousekeepingService implements ChannelEventListener {
 

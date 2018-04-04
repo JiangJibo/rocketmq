@@ -389,6 +389,9 @@ public abstract class NettyRemotingAbstract {
         }
     }
 
+    /**
+     * Netty事件执行器,负责监听Channel事件,连接,断开,异常，空闲时做相应处理
+     */
     class NettyEventExecuter extends ServiceThread {
         private final LinkedBlockingQueue<NettyEvent> eventQueue = new LinkedBlockingQueue<NettyEvent>();
         private final int maxSize = 10000;

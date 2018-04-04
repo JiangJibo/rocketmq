@@ -49,7 +49,6 @@ public class MQFaultStrategy {
 
     /**
      * 根据 Topic发布信息 选择一个消息队列
-     * 会尽量选择上次尝试的Broker
      * 默认情形下向所有Broker的MessageQueue按顺序轮流发送
      *
      * @param tpInfo         Topic发布信息

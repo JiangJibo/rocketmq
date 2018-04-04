@@ -473,7 +473,6 @@ public class DefaultMQProducerImpl implements MQProducerInner {
 
     /**
      * 根据 TopicPublishInfo 和 brokerName 获取消息队列
-     * 会尽量选择上次尝试的Broker
      *
      * @param tpInfo         消息发布信息
      * @param lastBrokerName brokerName
@@ -511,11 +510,10 @@ public class DefaultMQProducerImpl implements MQProducerInner {
      * @throws MQBrokerException 当Broker发生异常
      * @throws InterruptedException 当线程被打断
      */
-    private SendResult sendDefaultImpl(//
-                                       Message msg, //
-                                       final CommunicationMode communicationMode, //
-                                       final SendCallback sendCallback, //
-                                       final long timeout//
+    private SendResult sendDefaultImpl(Message msg,
+                                       final CommunicationMode communicationMode,
+                                       final SendCallback sendCallback,
+                                       final long timeout
     ) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
         // 校验 Producer 处于运行状态
         this.makeSureStateOK();
@@ -540,7 +538,8 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             for (; times < timesTotal; times++) {
                 String lastBrokerName = null == mq ? null : mq.getBrokerName();
                 @SuppressWarnings("SpellCheckingInspection")
-                MessageQueue tmpmq = this.selectOneMessageQueue(topicPublishInfo, lastBrokerName); // 选择消息要发送到的队列,默认策略下，下次发送选择其他的Broker
+                // 选择消息要发送到的队列,默认策略下,按顺序轮流发送,当一次发送失败时,按顺序选择下一个Broker的MessageQueue
+                MessageQueue tmpmq = this.selectOneMessageQueue(topicPublishInfo, lastBrokerName);
                 if (tmpmq != null) {
                     mq = tmpmq;
                     brokersSent[times] = mq.getBrokerName();
@@ -549,7 +548,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                         // 调用发送消息核心方法
                         sendResult = this.sendKernelImpl(msg, mq, communicationMode, sendCallback, topicPublishInfo, timeout);
                         endTimestamp = System.currentTimeMillis();
-                        // 更新Broker可用性信息,发送时间超过550ms后会有不可用时长，至少30S
+                        // 更新Broker可用性信息,发送时间超过550ms后会有不可用时长，至少30S,不可用时间只有在开启了延迟容错机制才有效果
                         this.updateFaultItem(mq.getBrokerName(), endTimestamp - beginTimestampPrev, false);
                         switch (communicationMode) {
                             case ASYNC:
@@ -558,7 +557,8 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                                 return null;
                             case SYNC:
                                 if (sendResult.getSendStatus() != SendStatus.SEND_OK) {
-                                    if (this.defaultMQProducer.isRetryAnotherBrokerWhenNotStoreOK()) { // 同步发送成功但存储有问题时 && 配置存储异常时重新发送开关 时，进行重试
+                                    // 同步发送成功但存储有问题时 && 配置存储异常时重新发送开关 时，进行重试
+                                    if (this.defaultMQProducer.isRetryAnotherBrokerWhenNotStoreOK()) {
                                         continue;
                                     }
                                 }
@@ -693,11 +693,11 @@ public class DefaultMQProducerImpl implements MQProducerInner {
      * @throws MQBrokerException 当Broker发生异常
      * @throws InterruptedException 当线程被打断
      */
-    private SendResult sendKernelImpl(final Message msg, //
-                                      final MessageQueue mq, //
-                                      final CommunicationMode communicationMode, //
-                                      final SendCallback sendCallback, //
-                                      final TopicPublishInfo topicPublishInfo, //
+    private SendResult sendKernelImpl(final Message msg,
+                                      final MessageQueue mq,
+                                      final CommunicationMode communicationMode,
+                                      final SendCallback sendCallback,
+                                      final TopicPublishInfo topicPublishInfo,
                                       final long timeout) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
         // 获取 broker的Master IP地址
         String brokerAddr = this.mQClientFactory.findBrokerAddressInPublish(mq.getBrokerName());
@@ -712,7 +712,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             brokerAddr = MixAll.brokerVIPChannel(this.defaultMQProducer.isSendMessageWithVIPChannel(), brokerAddr);
             byte[] prevBody = msg.getBody(); // 记录消息内容。下面逻辑可能改变消息内容，例如消息压缩。
             try {
-                // 设置唯一编号
+                // 设置uniqID,填充入Properties
                 MessageClientIDSetter.setUniqID(msg);
                 // 消息压缩
                 int sysFlag = 0;
@@ -771,11 +771,14 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 if (requestHeader.getTopic().startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) { // 消息重发Topic
                     String reconsumeTimes = MessageAccessor.getReconsumeTime(msg);
                     if (reconsumeTimes != null) {
+                        //如果当前消息时发送给"%RETRY%+consume"时,重置requestHeader里的reconsumeTimes
                         requestHeader.setReconsumeTimes(Integer.valueOf(reconsumeTimes));
+                        //清空消息里的RECONSUME_TIME信息
                         MessageAccessor.clearProperty(msg, MessageConst.PROPERTY_RECONSUME_TIME);
                     }
                     String maxReconsumeTimes = MessageAccessor.getMaxReconsumeTimes(msg);
                     if (maxReconsumeTimes != null) {
+                        // 默认最大消费次数是16,但可以指定当前消息的最大消费次数,在业务上可能有用
                         requestHeader.setMaxReconsumeTimes(Integer.valueOf(maxReconsumeTimes));
                         MessageAccessor.clearProperty(msg, MessageConst.PROPERTY_MAX_RECONSUME_TIMES);
                     }

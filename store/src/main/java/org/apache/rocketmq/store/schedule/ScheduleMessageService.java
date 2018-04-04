@@ -151,7 +151,7 @@ public class ScheduleMessageService extends ConfigManager {
     @Override
     public boolean load() {
         boolean result = super.load();  //加载delayOffset.json
-        result = result && this.parseDelayLevel();
+        result = result && this.parseDelayLevel();  //解析延迟级别
         return result;
     }
 

@@ -106,15 +106,14 @@ public class IndexFile {
 
             try {
 
-                // fileLock = this.fileChannel.lock(absSlotPos, hashSlotSize,
-                // false);
+                //在插槽位置的值,代表着相同key的最新索引位置
                 int slotValue = this.mappedByteBuffer.getInt(absSlotPos);
                 if (slotValue <= invalidIndex || slotValue > this.indexHeader.getIndexCount()) {
                     slotValue = invalidIndex;
                 }
-
+                // 时间差,消息存储时间 - 索引文件启用时间
                 long timeDiff = storeTimestamp - this.indexHeader.getBeginTimestamp();
-
+                // 时间差,精确到秒
                 timeDiff = timeDiff / 1000;
 
                 if (this.indexHeader.getBeginTimestamp() <= 0) {
@@ -124,7 +123,7 @@ public class IndexFile {
                 } else if (timeDiff < 0) {
                     timeDiff = 0;
                 }
-
+                //索引位置 = 40 + 5000000*4 + 已存储索引个数*20, 索引存储时有序
                 int absIndexPos =
                     IndexHeader.INDEX_HEADER_SIZE + this.hashSlotNum * hashSlotSize
                         + this.indexHeader.getIndexCount() * indexSize;
@@ -134,13 +133,13 @@ public class IndexFile {
                 this.mappedByteBuffer.putInt(absIndexPos + 4 + 8, (int)timeDiff);  //8byte
                 this.mappedByteBuffer.putInt(absIndexPos + 4 + 8 + 4, slotValue);  //4byte在,若不为空,值是上一个相同key的索引顺序位置,这样查询时能够递归的按照此值获取指定key的所有索引信息
 
-                this.mappedByteBuffer.putInt(absSlotPos, this.indexHeader.getIndexCount());  //存储插槽>索引序号,查询是通过插槽找到索引位置,如果key相同,更新插槽的索引位置值
-
+                this.mappedByteBuffer.putInt(absSlotPos, this.indexHeader.getIndexCount());  //存储插槽 >> 索引序号, 查询是通过插槽找到索引位置,如果key相同,更新插槽的索引位置值
+                // 如果当前索引是IndexFile的第一个索引
                 if (this.indexHeader.getIndexCount() <= 1) {
                     this.indexHeader.setBeginPhyOffset(phyOffset);
                     this.indexHeader.setBeginTimestamp(storeTimestamp);
                 }
-
+                // 更新IndexHeader的信息
                 this.indexHeader.incHashSlotCount();
                 this.indexHeader.incIndexCount();
                 this.indexHeader.setEndPhyOffset(phyOffset);

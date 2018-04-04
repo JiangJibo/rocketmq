@@ -313,7 +313,8 @@ public class MappedFile extends ReferenceResource {
     }
 
     /**
-     * flush
+     * 如果满足flush条件,返回这次flush后的位置
+     * 如果不满住flush条件,返回上次flush的位置
      *
      * @param flushLeastPages flush最小页数
      * @return The current flushed position

@@ -116,11 +116,10 @@ public class BrokerController {
     private BrokerFastFailure brokerFastFailure;
     private Configuration configuration;
 
-    public BrokerController(//
-                            final BrokerConfig brokerConfig, //
-                            final NettyServerConfig nettyServerConfig, //
-                            final NettyClientConfig nettyClientConfig, //
-                            final MessageStoreConfig messageStoreConfig //
+    public BrokerController(final BrokerConfig brokerConfig,
+                            final NettyServerConfig nettyServerConfig,
+                            final NettyClientConfig nettyClientConfig,
+                            final MessageStoreConfig messageStoreConfig
     ) {
         this.brokerConfig = brokerConfig;
         this.nettyServerConfig = nettyServerConfig;
@@ -195,6 +194,7 @@ public class BrokerController {
             }
         }
 
+        //加载Schedule ConsumeQueue,CommitLog,ConsumeQueue
         result = result && this.messageStore.load();
 
         if (result) {

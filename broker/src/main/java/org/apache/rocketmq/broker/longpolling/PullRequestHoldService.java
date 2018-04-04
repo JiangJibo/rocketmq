@@ -176,7 +176,7 @@ public class PullRequestHoldService extends ServiceThread {
                     }
                     // 有新的匹配消息，唤醒请求，即再次拉取消息。
                     if (newestOffset > request.getPullFromThisOffset()) {
-                        if (this.messageFilter.isMessageMatched(request.getSubscriptionData(), tagsCode)) {  //是否匹配不看queueId
+                        if (this.messageFilter.isMessageMatched(request.getSubscriptionData(), tagsCode)) { // 主要是tagsCode是否匹配
                             try {
                                 this.brokerController.getPullMessageProcessor().executeRequestWhenWakeup(request.getClientChannel(),
                                     request.getRequestCommand());

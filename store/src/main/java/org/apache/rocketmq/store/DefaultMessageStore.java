@@ -162,7 +162,7 @@ public class DefaultMessageStore implements MessageStore {
             boolean lastExitOK = !this.isTempFileExist();
             log.info("last shutdown {}", lastExitOK ? "normally" : "abnormally");
 
-            if (null != scheduleMessageService) {
+            if (null != scheduleMessageService) {   //解析延迟级别,加载delayOffset.json
                 result = result && this.scheduleMessageService.load();
             }
 
@@ -203,7 +203,7 @@ public class DefaultMessageStore implements MessageStore {
         this.storeStatsService.start();                     //启动TPS及状态新打印线程
 
         if (this.scheduleMessageService != null && SLAVE != messageStoreConfig.getBrokerRole()) {
-            this.scheduleMessageService.start();            //启动延时任务投递线程,同时每隔10S持久化每隔延时队列的投递进度
+            this.scheduleMessageService.start();            //Master启动延时任务投递线程,同时每隔10S持久化每隔延时队列的投递进度
         }
 
         if (this.getMessageStoreConfig().isDuplicationEnable()) {
@@ -1443,11 +1443,11 @@ public class DefaultMessageStore implements MessageStore {
 
         private void deleteExpiredFiles() {
             int deleteCount = 0;
-            long fileReservedTime = DefaultMessageStore.this.getMessageStoreConfig().getFileReservedTime();
-            int deletePhysicFilesInterval = DefaultMessageStore.this.getMessageStoreConfig().getDeleteCommitLogFilesInterval();
-            int destroyMapedFileIntervalForcibly = DefaultMessageStore.this.getMessageStoreConfig().getDestroyMapedFileIntervalForcibly();
+            long fileReservedTime = DefaultMessageStore.this.getMessageStoreConfig().getFileReservedTime(); // 文件保留时间,默认72
+            int deletePhysicFilesInterval = DefaultMessageStore.this.getMessageStoreConfig().getDeleteCommitLogFilesInterval(); // 删除文件间隔,100
+            int destroyMapedFileIntervalForcibly = DefaultMessageStore.this.getMessageStoreConfig().getDestroyMapedFileIntervalForcibly(); // 1000 * 120
 
-            boolean timeup = this.isTimeToDelete();
+            boolean timeup = this.isTimeToDelete();  // 删除时间默认凌晨4点
             boolean spacefull = this.isSpaceToDelete();
             boolean manualDelete = this.manualDeleteFileSeveralTimes > 0;
 
@@ -1457,14 +1457,14 @@ public class DefaultMessageStore implements MessageStore {
 
                 boolean cleanAtOnce = DefaultMessageStore.this.getMessageStoreConfig().isCleanFileForciblyEnable() && this.cleanImmediately;
 
-                log.info("begin to delete before {} hours file. timeup: {} spacefull: {} manualDeleteFileSeveralTimes: {} cleanAtOnce: {}", //
-                    fileReservedTime, //
-                    timeup, //
-                    spacefull, //
-                    manualDeleteFileSeveralTimes, //
+                log.info("begin to delete before {} hours file. timeup: {} spacefull: {} manualDeleteFileSeveralTimes: {} cleanAtOnce: {}",
+                    fileReservedTime,
+                    timeup,
+                    spacefull,
+                    manualDeleteFileSeveralTimes,
                     cleanAtOnce);
 
-                fileReservedTime *= 60 * 60 * 1000;
+                fileReservedTime *= 60 * 60 * 1000;  // 72h
 
                 deleteCount = DefaultMessageStore.this.commitLog.deleteExpiredFile(fileReservedTime, deletePhysicFilesInterval,
                     destroyMapedFileIntervalForcibly, cleanAtOnce);
@@ -1581,8 +1581,13 @@ public class DefaultMessageStore implements MessageStore {
             }
         }
 
+        /**
+         * 当CommitLog删除了过期的MappedFile,ConsumeQueue也删除对应的消费文件
+         * 从CommitLog的minOffset开始
+         * 也就是说ConsumeQueue的MappedFile里第一个unit的commitLogOffset < minOffset, 则删除此MappedFile
+         */
         private void deleteExpiredFiles() {
-            int deleteLogicsFilesInterval = DefaultMessageStore.this.getMessageStoreConfig().getDeleteConsumeQueueFilesInterval();
+            int deleteLogicsFilesInterval = DefaultMessageStore.this.getMessageStoreConfig().getDeleteConsumeQueueFilesInterval(); //100
 
             long minOffset = DefaultMessageStore.this.commitLog.getMinOffset();
             if (minOffset > this.lastPhysicalMinOffset) {
@@ -1593,7 +1598,7 @@ public class DefaultMessageStore implements MessageStore {
                 for (ConcurrentHashMap<Integer, ConsumeQueue> maps : tables.values()) {
                     for (ConsumeQueue logic : maps.values()) {
                         int deleteCount = logic.deleteExpiredFile(minOffset);
-
+                        // 每删除成功一个休眠100ms
                         if (deleteCount > 0 && deleteLogicsFilesInterval > 0) {
                             try {
                                 Thread.sleep(deleteLogicsFilesInterval);
@@ -1613,7 +1618,7 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     /**
-     * flush 消费队列 线程服务
+     * flush ConsumeQueue 线程服务
      */
     class FlushConsumeQueueService extends ServiceThread {
 
@@ -1623,6 +1628,11 @@ public class DefaultMessageStore implements MessageStore {
          */
         private long lastFlushTimestamp = 0;
 
+        /**
+         * 每隔1S执行一次
+         *
+         * @param retryTimes 默认1次, shutdown时3次
+         */
         private void doFlush(int retryTimes) {
             int flushConsumeQueueLeastPages = DefaultMessageStore.this.getMessageStoreConfig().getFlushConsumeQueueLeastPages(); //最少刷新2页
 
@@ -1630,10 +1640,10 @@ public class DefaultMessageStore implements MessageStore {
             if (retryTimes == RETRY_TIMES_OVER) {
                 flushConsumeQueueLeastPages = 0;
             }
-            // 当时间满足flushConsumeQueueThoroughInterval = 60S时，即使写入的数量不足flushConsumeQueueLeastPages，也进行flush
             long logicsMsgTimestamp = 0;
-            int flushConsumeQueueThoroughInterval = DefaultMessageStore.this.getMessageStoreConfig().getFlushConsumeQueueThoroughInterval();
+            int flushConsumeQueueThoroughInterval = DefaultMessageStore.this.getMessageStoreConfig().getFlushConsumeQueueThoroughInterval();  //60
             long currentTimeMillis = System.currentTimeMillis();
+            // 当距离上次flush的间隔 >= 60S时，即使写入的数量不足flushConsumeQueueLeastPages，也进行flush
             if (currentTimeMillis >= (this.lastFlushTimestamp + flushConsumeQueueThoroughInterval)) {
                 this.lastFlushTimestamp = currentTimeMillis;
                 flushConsumeQueueLeastPages = 0;
@@ -1663,6 +1673,7 @@ public class DefaultMessageStore implements MessageStore {
 
             while (!this.isStopped()) {
                 try {
+                    //1S,每隔1S执行一次Flush
                     int interval = DefaultMessageStore.this.getMessageStoreConfig().getFlushIntervalConsumeQueue();
                     this.waitForRunning(interval);
                     this.doFlush(1);

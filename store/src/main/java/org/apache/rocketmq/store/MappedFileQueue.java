@@ -361,6 +361,15 @@ public class MappedFileQueue {
         }
     }
 
+    /**
+     * 删除过期文件
+     *
+     * @param expiredTime         文件保留时间
+     * @param deleteFilesInterval 删除间隔
+     * @param intervalForcibly
+     * @param cleanImmediately
+     * @return
+     */
     public int deleteExpiredFileByTime(final long expiredTime,
                                        final int deleteFilesInterval,
                                        final long intervalForcibly,
@@ -375,6 +384,7 @@ public class MappedFileQueue {
         for (int i = 0; i < mfsLength; i++) {
             MappedFile mappedFile = (MappedFile)mfs[i];
             long liveMaxTimestamp = mappedFile.getLastModifiedTimestamp() + expiredTime;
+            // 如果MappedFile的最后更新时间距离现在超过了72h
             if (System.currentTimeMillis() >= liveMaxTimestamp || cleanImmediately) {
                 if (mappedFile.destroy(intervalForcibly)) {
                     files.add(mappedFile);
@@ -401,6 +411,13 @@ public class MappedFileQueue {
         return deleteCount;
     }
 
+    /**
+     * 删除此offset之前的的mappedFile
+     *
+     * @param offset   CommitLog minOffset
+     * @param unitSize
+     * @return
+     */
     public int deleteExpiredFileByOffset(long offset, int unitSize) {
         Object[] mfs = this.copyMappedFiles(0);
 
@@ -417,6 +434,7 @@ public class MappedFileQueue {
                 if (result != null) {
                     long maxOffsetInLogicQueue = result.getByteBuffer().getLong();
                     result.release();
+                    //对比大小来决定删除
                     destroy = maxOffsetInLogicQueue < offset;
                     if (destroy) {
                         log.info("physic min offset " + offset + ", logics in current mappedFile max offset "
@@ -456,8 +474,11 @@ public class MappedFileQueue {
         MappedFile mappedFile = this.findMappedFileByOffset(this.flushedWhere, false);
         if (mappedFile != null) {
             long tmpTimeStamp = mappedFile.getStoreTimestamp();
+            // 如果满足flush条件,返回这次flush后的位置
+            // 如果不满住flush条件,返回上次flush的位置
             int offset = mappedFile.flush(flushLeastPages);
             long where = mappedFile.getFileFromOffset() + offset;
+            // flush的偏移量 == 文件里的数据偏移量
             result = where == this.flushedWhere;
             this.flushedWhere = where;
             if (0 == flushLeastPages) {

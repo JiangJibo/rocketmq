@@ -266,9 +266,9 @@ public class MQClientInstance {
                     this.startScheduledTask();
                     // Start pull service
                     this.pullMessageService.start();
-                    // Start rebalance service
+                    // Start Consumer rebalance service
                     this.rebalanceService.start();
-                    //启动内部默认的生产者,用于消费者SendMessageBack
+                    //启动内部默认的生产者,用于消费者SendMessageBack,但不会执行MQClientInstance.start(),也就是当前方法不会被执行
                     this.defaultMQProducer.getDefaultMQProducerImpl().start(false);
                     log.info("the client factory [{}] start OK", this.clientId);
                     this.serviceState = ServiceState.RUNNING;
@@ -340,10 +340,11 @@ public class MQClientInstance {
             }
         }, 1000 * 10, this.clientConfig.getPersistConsumerOffsetInterval(), TimeUnit.MILLISECONDS);
 
+        //每隔1m校正DefaultMQPushConsumer的线程池, 现版本以废弃
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
-            public void run() { // TODO 待读：ALL
+            public void run() {
                 try {
                     MQClientInstance.this.adjustThreadPool();
                 } catch (Exception e) {
@@ -472,6 +473,9 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * 校正线程池,仅对{@link DefaultMQPushConsumerImpl}进行校正
+     */
     public void adjustThreadPool() {
         Iterator<Entry<String, MQConsumerInner>> it = this.consumerTable.entrySet().iterator();
         while (it.hasNext()) {

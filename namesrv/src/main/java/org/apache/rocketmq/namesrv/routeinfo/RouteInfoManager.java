@@ -149,7 +149,7 @@ public class RouteInfoManager {
                 }
                 brokerNames.add(brokerName);
 
-                // 是不是注册某个Broker下新的机器
+                // 是不是注册某个Broker下新的机器,Master不一定要比Slave早注册
                 boolean registerFirst = false;
                 BrokerData brokerData = this.brokerAddrTable.get(brokerName);
                 if (null == brokerData) {

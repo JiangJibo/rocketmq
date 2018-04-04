@@ -237,8 +237,9 @@ public class IndexService {
                 case MessageSysFlag.TRANSACTION_ROLLBACK_TYPE:
                     return;
             }
-
-            if (req.getUniqKey() != null) {   //若消息体中指定了uniqueKey属性(默认有)
+            //若消息体中指定了uniqueKey属性(Producer创建时Client都会生成)
+            if (req.getUniqKey() != null) {
+                // key = topic#uniqueKey
                 indexFile = putKey(indexFile, msg, buildKey(topic, req.getUniqKey()));
                 if (indexFile == null) {
                     log.error("putKey error commitlog {} uniqkey {}", req.getCommitLogOffset(), req.getUniqKey());

@@ -315,6 +315,10 @@ public class ConsumeQueue {
         return this.mappedFileQueue.flush(flushLeastPages);
     }
 
+    /**
+     * @param offset CommitLog的minOffset
+     * @return
+     */
     public int deleteExpiredFile(long offset) {
         int cnt = this.mappedFileQueue.deleteExpiredFileByOffset(offset, CQ_STORE_UNIT_SIZE);
         this.correctMinOffset(offset);
