@@ -306,7 +306,7 @@ public class DefaultMessageStore implements MessageStore {
             this.printTimes.set(0);
         }
 
-        // 消息过长
+        // topic过长
         if (msg.getTopic().length() > Byte.MAX_VALUE) {
             log.warn("putMessage message topic length too long " + msg.getTopic().length());
             return new PutMessageResult(PutMessageStatus.MESSAGE_ILLEGAL, null);

@@ -717,9 +717,8 @@ public class MQClientAPIImpl {
     }
 
     @SuppressWarnings("SameParameterValue")
-    public List<String> getConsumerIdListByGroup(//
-                                                 final String addr, //
-                                                 final String consumerGroup, //
+    public List<String> getConsumerIdListByGroup(final String addr,
+                                                 final String consumerGroup,
                                                  final long timeoutMillis)
         throws RemotingConnectException, RemotingSendRequestException, RemotingTimeoutException,
         MQBrokerException, InterruptedException {

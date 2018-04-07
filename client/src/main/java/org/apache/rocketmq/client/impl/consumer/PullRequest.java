@@ -39,7 +39,7 @@ public class PullRequest {
      */
     private long nextOffset;
     /**
-     * // TODO 疑问：用处是？
+     * 当前ProcessQueue是否第一次锁定
      */
     private boolean lockedFirst = false;
 

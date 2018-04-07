@@ -76,6 +76,7 @@ public class ConsumeMessageOrderlyService implements ConsumeMessageService {
 
     public void start() {
         if (MessageModel.CLUSTERING.equals(ConsumeMessageOrderlyService.this.defaultMQPushConsumerImpl.messageModel())) {
+            //每隔20S更新Borker上的当前MessageQueue分布式锁的最后刷新时间
             this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
                 @Override
                 public void run() {
@@ -472,7 +473,7 @@ public class ConsumeMessageOrderlyService implements ConsumeMessageService {
             // 获得 Consumer 消息队列锁
             final Object objLock = messageQueueLock.fetchLockObject(this.messageQueue);
             synchronized (objLock) {
-                // (广播模式) 或者 (集群模式 && Broker消息队列锁有效)
+                // (广播模式) || (集群模式 && Broker消息队列锁有效)
                 if (MessageModel.BROADCASTING.equals(ConsumeMessageOrderlyService.this.defaultMQPushConsumerImpl.messageModel())
                     || (this.processQueue.isLocked() && !this.processQueue.isLockExpired())) {
                     final long beginTime = System.currentTimeMillis();

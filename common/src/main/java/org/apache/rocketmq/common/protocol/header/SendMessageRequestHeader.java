@@ -80,7 +80,7 @@ public class SendMessageRequestHeader implements CommandCustomHeader {
     @CFNullable
     private boolean unitMode = false;
     /**
-     * 最大消费次数
+     * 最大消费次数,可自定义
      */
     private Integer maxReconsumeTimes;
 

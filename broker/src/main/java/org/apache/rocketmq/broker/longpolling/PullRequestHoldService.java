@@ -163,7 +163,7 @@ public class PullRequestHoldService extends ServiceThread {
         String key = this.buildKey(topic, queueId);
         ManyPullRequest mpr = this.pullRequestTable.get(key);  //可能多个Consumer订阅一个Queue,比如%RETRY%重试队列
         if (mpr != null) {
-            //
+
             List<PullRequest> requestList = mpr.cloneListAndClear();   //当所有消费请求都被执行时,pullRequestTable里就会被清空
             if (requestList != null) {
                 List<PullRequest> replayList = new ArrayList<>(); // 不符合唤醒的请求数组,当不为空时会被重新放回 pullRequestTable

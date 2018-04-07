@@ -75,7 +75,7 @@ public class RebalancePushImpl extends RebalanceImpl {
                 // 执行此方法完后才会释放ProcessQueue的Lock,见ConsumeMessageOrderlyService#464 行
                 // 锁定不成功说明在长达1S的时间内一直都在执行 MessageListenerOrderly#consumeMessage 方法
                 // 也就是说 consumeMessage() 方法执行时间超过1S,每条消息的消费速度以及方法参数List<MessageExt>的大小可能存在问题
-                // 此时只能等待相应MessageQueue在Broker的锁定时间过期后再被其他消费者锁定
+                // 此时只能等待相应MessageQueue在Broker的锁定时间过期(1m)后再被其他消费者锁定
                 if (pq.getLockConsume().tryLock(1000, TimeUnit.MILLISECONDS)) {
                     try {
                         return this.unlockDelay(mq, pq);

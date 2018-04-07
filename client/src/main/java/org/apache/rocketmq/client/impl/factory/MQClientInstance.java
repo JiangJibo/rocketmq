@@ -258,7 +258,7 @@ public class MQClientInstance {
                     this.serviceState = ServiceState.START_FAILED;
                     // If not specified,looking address from name server
                     if (null == this.clientConfig.getNamesrvAddr()) {
-                        this.mQClientAPIImpl.fetchNameServerAddr(); // TODO 待读：获取namesrv，从url
+                        this.mQClientAPIImpl.fetchNameServerAddr(); // TODO 待读：如果url未指定，可以通过Http请求从其他处获取
                     }
                     // Start request-response channel
                     this.mQClientAPIImpl.start();

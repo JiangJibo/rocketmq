@@ -314,7 +314,7 @@ public class RebalanceLockManager {
         }
 
         /**
-         * 锁定是否过期
+         * 锁定是否过期,60S
          *
          * @return 是否
          */

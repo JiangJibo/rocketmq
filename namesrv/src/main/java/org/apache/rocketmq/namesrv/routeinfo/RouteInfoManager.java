@@ -509,7 +509,7 @@ public class RouteInfoManager {
      * 长时间没有发送心跳可能是应用出现问题,心跳断开可能是服务器IO出现问题
      * 移除相应的{@link #brokerLiveTable}
      * 移除{@link #brokerAddrTable}里相应{@link BrokerData#brokerAddrs}
-     * 不移除{@link #topicQueueTable}里的QueueData,获取到的数据后要通过BrokerData来过滤QueueData
+     * 如果当前BrokerData不存在Broker时，移除此BrokerData
      *
      * @param remoteAddr
      * @param channel
@@ -561,6 +561,7 @@ public class RouteInfoManager {
                             Entry<Long, String> entry = it.next();
                             Long brokerId = entry.getKey();
                             String brokerAddr = entry.getValue();
+                            // 移除BrokerAddr
                             if (brokerAddr.equals(brokerAddrFound)) {
                                 brokerNameFound = brokerData.getBrokerName();
                                 it.remove();
@@ -569,8 +570,9 @@ public class RouteInfoManager {
                                 break;
                             }
                         }
-
+                        // BrokerData里已经没有存活的Broker了,移除BrokerData
                         if (brokerData.getBrokerAddrs().isEmpty()) {
+                            // 移除Broker名称,也就是整个Broker
                             removeBrokerName = true;
                             itBrokerAddrTable.remove();
                             log.info("remove brokerName[{}] from brokerAddrTable, because channel destroyed",
@@ -599,7 +601,7 @@ public class RouteInfoManager {
                             }
                         }
                     }
-
+                    // 如果移除整个BrokerData,也就是移除Broker名称,那么移除此Broker对应的MessageQueue
                     if (removeBrokerName) {
                         Iterator<Entry<String, List<QueueData>>> itTopicQueueTable =
                             this.topicQueueTable.entrySet().iterator();
@@ -617,7 +619,7 @@ public class RouteInfoManager {
                                         topic, queueData);
                                 }
                             }
-
+                            // 如果某个topic仅存在一个Broker上，且其宕机了
                             if (queueDataList.isEmpty()) {
                                 itTopicQueueTable.remove();
                                 log.info("remove topic[{}] all queue, from topicQueueTable, because channel destroyed",
