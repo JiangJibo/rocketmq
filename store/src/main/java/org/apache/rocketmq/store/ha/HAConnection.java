@@ -297,7 +297,7 @@ public class HAConnection {
 
                     if (this.lastWriteOver) {
                         long interval = HAConnection.this.haService.getDefaultMessageStore().getSystemClock().now() - this.lastWriteTimestamp;
-                        //如果距离上次同步(写数据给Slave)超过5S,也就是5S内没有新的消息,发送一个空包过去,就是没有实际数据的,刷新Slave的最后写入时间
+                        //如果距离上次同步(写数据给Slave)超过5S,也就是5S内没有新的消息,发送一个空包过去,只有进度没有消息body,刷新Slave的最后写入时间
                         if (interval > HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig().getHaSendHeartbeatInterval()) {
                             // Build Header
                             this.byteBufferHeader.position(0);
@@ -318,7 +318,7 @@ public class HAConnection {
                         }
                     }
 
-                    // 选择新的CommitLog内容进行传输
+                    // 提取CommitLog指定Offset后的内容
                     SelectMappedBufferResult selectResult =
                         HAConnection.this.haService.getDefaultMessageStore().getCommitLogData(this.nextTransferFromWhere);
                     if (selectResult != null) {
@@ -404,7 +404,7 @@ public class HAConnection {
 
             writeSizeZeroTimes = 0;
 
-            // Write Body
+            // 如果Header都写完了,Write Body
             if (!this.byteBufferHeader.hasRemaining()) {
                 while (this.selectMappedBufferResult.getByteBuffer().hasRemaining()) {
                     int writeSize = this.socketChannel.write(this.selectMappedBufferResult.getByteBuffer());

@@ -587,6 +587,12 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         }
     }
 
+    /**
+     * 如果当前消费者未指定消息的最大消费次数,则使用默认的值：16
+     * RocketMQ在一定版本后可以自定义最大消费次数
+     *
+     * @return
+     */
     private int getMaxReconsumeTimes() {
         // default reconsume times: 16
         if (this.defaultMQPushConsumer.getMaxReconsumeTimes() == -1) {

@@ -555,7 +555,7 @@ public class HAService {
                         this.byteBufferRead.position(this.dispatchPostion + msgHeaderSize);
                         this.byteBufferRead.get(bodyData);
                         HAService.this.defaultMessageStore.appendToCommitLog(masterPhyOffset, bodyData);
-                        // 设置处理到的位置
+                        // 还原position
                         this.byteBufferRead.position(readSocketPos);
                         this.dispatchPostion += msgHeaderSize + bodySize;
                         // 上报到Master进度

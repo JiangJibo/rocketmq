@@ -249,7 +249,7 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
         msgInner.setStoreHost(msgExt.getStoreHost());
         msgInner.setReconsumeTimes(msgExt.getReconsumeTimes());
 
-        msgInner.setWaitStoreMsgOK(false);  //不等待Slave是的进度上报
+        msgInner.setWaitStoreMsgOK(false);  // 不等待Slave是的进度上报,因为执行方式是Oneway
         MessageAccessor.clearProperty(msgInner, MessageConst.PROPERTY_DELAY_TIME_LEVEL); // 清除延迟级别=》事务消息不支持延时投递
 
         msgInner.setTopic(msgExt.getTopic());

@@ -240,7 +240,7 @@ public class MQClientInstance {
         Set<MessageQueue> mqList = new HashSet<>();
         List<QueueData> qds = route.getQueueDatas();
         for (QueueData qd : qds) {
-            if (PermName.isReadable(qd.getPerm())) {  //队列是否是读取队列
+            if (PermName.isReadable(qd.getPerm())) {  // QueueData是否可读, %DLQ%+consumeGroup 队列只能写不能读
                 for (int i = 0; i < qd.getReadQueueNums(); i++) {
                     MessageQueue mq = new MessageQueue(topic, qd.getBrokerName(), i);
                     mqList.add(mq);

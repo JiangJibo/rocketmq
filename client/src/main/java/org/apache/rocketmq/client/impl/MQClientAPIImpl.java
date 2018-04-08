@@ -895,11 +895,10 @@ public class MQClientAPIImpl {
         throw new MQBrokerException(response.getCode(), response.getRemark());
     }
 
-    public void endTransactionOneway(//
-                                     final String addr, //
-                                     final EndTransactionRequestHeader requestHeader, //
-                                     final String remark, //
-                                     final long timeoutMillis//
+    public void endTransactionOneway(final String addr,
+                                     final EndTransactionRequestHeader requestHeader,
+                                     final String remark,
+                                     final long timeoutMillis
     ) throws RemotingException, MQBrokerException, InterruptedException {
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.END_TRANSACTION, requestHeader);
 

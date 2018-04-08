@@ -151,9 +151,9 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         }
 
         // 获取topicConfig。如果获取不到，则进行创建
-        TopicConfig topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(//
-            newTopic, //
-            subscriptionGroupConfig.getRetryQueueNums(), //
+        TopicConfig topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(
+            newTopic,
+            subscriptionGroupConfig.getRetryQueueNums(),
             PermName.PERM_WRITE | PermName.PERM_READ, topicSysFlag);
         if (null == topicConfig) { // 没有配置
             response.setCode(ResponseCode.SYSTEM_ERROR);
@@ -185,14 +185,16 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
 
         // 处理 delayLevel（独有）。
         int delayLevel = requestHeader.getDelayLevel();
-        int maxReconsumeTimes = subscriptionGroupConfig.getRetryMaxTimes();  //16
+        int maxReconsumeTimes = subscriptionGroupConfig.getRetryMaxTimes();
+        // V3_4_9之后的版本,可以支持自定义消息的最大消费次数,若为指定,默认为16
         if (request.getVersion() >= MQVersion.Version.V3_4_9.ordinal()) {
             maxReconsumeTimes = requestHeader.getMaxReconsumeTimes();
         }
-        if (msgExt.getReconsumeTimes() >= maxReconsumeTimes || delayLevel < 0) { // 如果超过最大消费次数或者delayLevel < 0，则topic修改成"%DLQ%" + 分组名，即加入 死信队列(Dead Letter Queue)
+        // 如果超过最大消费次数或者delayLevel < 0，则topic修改成"%DLQ%" + 分组名，即加入 死信队列(Dead Letter Queue)
+        if (msgExt.getReconsumeTimes() >= maxReconsumeTimes || delayLevel < 0) {
             newTopic = MixAll.getDLQTopic(requestHeader.getGroup());
             queueIdInt = Math.abs(this.random.nextInt() % 99999999) % DLQ_NUMS_PER_GROUP;
-
+            // dlq队列只能写,不能读
             topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(newTopic, //
                 DLQ_NUMS_PER_GROUP,
                 PermName.PERM_WRITE, 0
@@ -214,7 +216,8 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         msgInner.setTopic(newTopic);                    //"%RETRY%+consumeGroup"
         msgInner.setBody(msgExt.getBody());
         msgInner.setFlag(msgExt.getFlag());
-        MessageAccessor.setProperties(msgInner, msgExt.getProperties());                           //拷贝原始消息的Properties,包括PROPERTY_RETRY_TOPIC,PROPERTY_DELAY_TIME_LEVEL等
+        MessageAccessor.setProperties(msgInner,
+            msgExt.getProperties());                           //拷贝原始消息的Properties,包括PROPERTY_RETRY_TOPIC,PROPERTY_DELAY_TIME_LEVEL等
         msgInner.setPropertiesString(MessageDecoder.messageProperties2String(msgExt.getProperties()));
         msgInner.setTagsCode(MessageExtBrokerInner.tagsString2tagsCode(null, msgExt.getTags()));
         msgInner.setQueueId(queueIdInt);  //0
@@ -338,7 +341,8 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             if (reconsumeTimes >= maxReconsumeTimes) { // 超过最大消费次数
                 newTopic = MixAll.getDLQTopic(groupName);  // %DLQ%+groupName
                 queueIdInt = Math.abs(this.random.nextInt() % 99999999) % DLQ_NUMS_PER_GROUP;
-                topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(newTopic, DLQ_NUMS_PER_GROUP, PermName.PERM_WRITE, 0);
+                topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(newTopic, DLQ_NUMS_PER_GROUP,
+                    PermName.PERM_WRITE, 0);
                 if (null == topicConfig) {
                     response.setCode(ResponseCode.SYSTEM_ERROR);
                     response.setRemark("topic[" + newTopic + "] not exist");

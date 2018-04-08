@@ -945,6 +945,8 @@ public class CommitLog {
         }
 
         /**
+         * 等待一段时间,直至{@link #wakeupCustomer}
+         *
          * @param timeout
          * @return
          */
